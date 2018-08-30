@@ -153,6 +153,7 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".desc"              , "Advanced and extended version of the original physics properties tool")
   language.Add("tool."..gsTool..".left"              , "Apply the selected physical property")
   language.Add("tool."..gsTool..".right"             , "Cache the selected physical property")
+  language.Add("tool."..gsTool..".right_use"         , "Cache the applied physical property")
   language.Add("tool."..gsTool..".reload"            , "Reset original physical property")
   language.Add("tool."..gsTool..".left_use"          , "Apply cached physical property")
   language.Add("tool."..gsTool..".material_type"     , "Select material type from the ones listed here")
@@ -163,6 +164,12 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".gravity_toggle"    , "When checked turns enables the gravity for an entity")
   language.Add("tool."..gsTool..".material_draw_con" , "Enable material draw")
   language.Add("tool."..gsTool..".material_draw"     , "Show trace entity surface material")  
+end
+
+if(SERVER) then
+  duplicator.RegisterEntityModifier(gsLisp.."dupe", function(oPly, oEnt, tData)
+    oEnt:SetNWBool(gsLisp.."gravity", tData[1]); oEnt:SetNWString(gsLisp.."matprop", tData[2])
+  end)
 end
 
 function TOOL:NotifyPlayer(sText, sType, vRet)
@@ -199,7 +206,7 @@ function TOOL:CheckButton(iIn)
 end
 
 function TOOL:LeftClick(tr)
-  if(not (tr and tr.Hit)) then return false end
+  if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   local trEnt, trBon = tr.Entity, tr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer() or trEnt:IsWorld()) then return false end
@@ -214,32 +221,36 @@ function TOOL:LeftClick(tr)
   else matprop = getMaterialInfo(self:GetClientNumber("material_type"),
                                  self:GetClientNumber("material_name")) end
   if(matprop:len() == 0 or matprop == gsInvm) then
-    return self:NotifyPlayer("Material apply invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Apply invalid: "..matprop, "ERROR", false) end
   construct.SetPhysProp(mePly, trEnt, trBon, nil, {GravityToggle = gravity, Material = matprop})
-  DoPropSpawnedEffect(trEnt)
+  trEnt:SetNWBool(gsLisp.."gravity", gravity); trEnt:SetNWString(gsLisp.."matprop", matprop)
+  DoPropSpawnedEffect(trEnt); duplicator.StoreEntityModifier(trEnt, gsLisp.."dupe", {gravity, matprop})
   return self:NotifyPlayer("Material apply: "..matprop, "GENERIC", true)
 end
 
 function TOOL:RightClick(tr)
   if(not (tr and tr.Hit)) then return false end
-  local mePly, trPro = self:GetOwner(), tr.SurfaceProps
+  local mePly, trPro, trEnt = self:GetOwner(), tr.SurfaceProps, tr.Entity
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
+  if(self:CheckButton(IN_USE) and (trEnt and trEnt:IsValid())) then
+    matprop = trEnt:GetNWString(gsLisp.."matprop", matprop) end
   if(matprop:len() == 0 or matprop == gsInvm) then
-    return self:NotifyPlayer("Material cache invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Cache invalid: "..matprop, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
   return self:NotifyPlayer("Material copy: "..matprop, "UNDO", true)
 end
 
 function TOOL:Reload(tr)
-  if(not (tr and tr.Hit)) then return false end
+  if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   local trEnt, trBon = tr.Entity, tr.PhysicsBone
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
   if(matprop:len() == 0 or matprop == gsInvm) then
-    return self:NotifyPlayer("Material reset invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Reset invalid: "..matprop, "ERROR", false) end
   if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then
-    return self:NotifyPlayer("Material reset physics invalid: "..matprop, "ERROR", false) end
+    return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
   construct.SetPhysProp(mePly, trEnt, trBon, nil, {Material = matprop})
+  trEnt:SetNWString(gsLisp.."matprop", matprop)
   return self:NotifyPlayer("Material reset: "..matprop, "GENERIC", true)
 end
 
@@ -249,11 +260,13 @@ function TOOL:DrawHUD(w, h)
   local trEnt, nP = oTr.Entity, oTr.SurfaceProps
   if(not (trEnt and trEnt:IsValid())) then return end
   local xyP = trEnt:LocalToWorld(trEnt:OBBCenter()):ToScreen()
-  local matprop = (nP and util.GetSurfacePropName(nP) or gsInvm); surface.SetFont(gsFont)
-  local tw, th = surface.GetTextSize(matprop)
+  local text = (nP and util.GetSurfacePropName(nP) or gsInvm); surface.SetFont(gsFont)
+  text = text.." [ "..tostring(trEnt:GetNWBool  (gsLisp.."gravity", true)).." | "..
+                      tostring(trEnt:GetNWString(gsLisp.."matprop", text)).." ]"
+  local tw, th = surface.GetTextSize(text)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 12, xyP.y - th/2 - 4, tw + 24, th + 8, gclBgn)
   draw.RoundedBox(gnRadr, xyP.x - tw/2 - 10, xyP.y - th/2 - 2, tw + 20, th + 4, gclBox)
-  draw.SimpleText(matprop, gsFont, xyP.x, xyP.y, gclTxt, gnTacn, gnTacn)
+  draw.SimpleText(text, gsFont, xyP.x, xyP.y, gclTxt, gnTacn, gnTacn)
 end
 
 local ConVarsDefault = TOOL:BuildConVarList()
