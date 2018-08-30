@@ -1,0 +1,7 @@
+"AddonInfo"
+{
+  "name" "Legacy Tools"
+  "author_name" "DVD"
+  "author_email" "dvd_video@abv.bg"
+  "info" "Collection of tools ported from older versions of Gmod"
+}
