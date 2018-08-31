@@ -20,6 +20,7 @@ TOOL.ClientConVar = {
   [ "material_cash"  ] = 1
 }
 
+-- This list contains surface property types and it is used to index property name lists
 table.Empty(list.GetForEdit(gsLisp.."type"))
 list.Add(gsLisp.."type", "special"      )
 list.Add(gsLisp.."type", "concrete"     )
@@ -32,6 +33,7 @@ list.Add(gsLisp.."type", "miscellaneous")
 list.Add(gsLisp.."type", "organic"      )
 list.Add(gsLisp.."type", "manufactured" )
 
+-- These are the property name lists indexed by a property type used
 table.Empty(list.GetForEdit(gsLisp.."special"))
 list.Add(gsLisp.."special",  "default"            )
 list.Add(gsLisp.."special",  "default_silent"     )
@@ -206,22 +208,22 @@ function TOOL:CheckButton(iIn)
 end
 
 function TOOL:LeftClick(tr)
+  if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
+  -- Make sure we don mot apply custom physical properties on the world surface
   local trEnt, trBon = tr.Entity, tr.PhysicsBone
   if(not (trEnt and trEnt:IsValid())) then return false end
   if(trEnt:IsPlayer() or trEnt:IsWorld()) then return false end
   -- Make sure there's a physics object to manipulate
   if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then return false end
-  -- Client can bail out here and assume we're going ahead
-  if(CLIENT) then return true end
-  -- Get client's CVars
   local mePly, matprop = self:GetOwner()
   local gravity = (self:GetClientNumber("gravity_toggle") == 1)
   if(self:CheckButton(IN_USE)) then matprop = self:GetMaterialCash()
   else matprop = getMaterialInfo(self:GetClientNumber("material_type"),
                                  self:GetClientNumber("material_name")) end
-  if(matprop:len() == 0 or matprop == gsInvm) then
+  if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
     return self:NotifyPlayer("Apply invalid: "..matprop, "ERROR", false) end
+  -- Zhu Li, do the thing and hand me a screwdriver. Network the values for drawing
   construct.SetPhysProp(mePly, trEnt, trBon, nil, {GravityToggle = gravity, Material = matprop})
   trEnt:SetNWBool(gsLisp.."gravity", gravity); trEnt:SetNWString(gsLisp.."matprop", matprop)
   DoPropSpawnedEffect(trEnt); duplicator.StoreEntityModifier(trEnt, gsLisp.."dupe", {gravity, matprop})
@@ -229,18 +231,20 @@ function TOOL:LeftClick(tr)
 end
 
 function TOOL:RightClick(tr)
+  if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit)) then return false end
   local mePly, trPro, trEnt = self:GetOwner(), tr.SurfaceProps, tr.Entity
   local matprop = (trPro and util.GetSurfacePropName(trPro) or gsInvm)
   if(self:CheckButton(IN_USE) and (trEnt and trEnt:IsValid())) then
     matprop = trEnt:GetNWString(gsLisp.."matprop", matprop) end
-  if(matprop:len() == 0 or matprop == gsInvm) then
+  if(matprop:len() == 0 or matprop == gsInvm) then -- Check for a valid value
     return self:NotifyPlayer("Cache invalid: "..matprop, "ERROR", false) end
   mePly:ConCommand(gsTool.."_material_cash "..matprop)
   return self:NotifyPlayer("Material copy: "..matprop, "UNDO", true)
 end
 
 function TOOL:Reload(tr)
+  if(CLIENT) then return true end -- The client has nothing to do
   if(not (tr and tr.Hit) or tr.HitWorld) then return false end
   local trEnt, trBon = tr.Entity, tr.PhysicsBone
   local mePly, trPro = self:GetOwner(), tr.SurfaceProps
@@ -250,7 +254,7 @@ function TOOL:Reload(tr)
   if(SERVER and not util.IsValidPhysicsObject(trEnt, trBon)) then
     return self:NotifyPlayer("Reset physics invalid: "..matprop, "ERROR", false) end
   construct.SetPhysProp(mePly, trEnt, trBon, nil, {Material = matprop})
-  trEnt:SetNWString(gsLisp.."matprop", matprop)
+  trEnt:SetNWString(gsLisp.."matprop", matprop) -- Apply only the matprop on reload
   return self:NotifyPlayer("Material reset: "..matprop, "GENERIC", true)
 end
 
@@ -301,17 +305,15 @@ function TOOL.BuildCPanel( CPanel )
         pComboName:SetTall(20)
         pComboName:SetTooltip(language.GetPhrase("tool."..gsTool..".material_name"))
         pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def").." "..matprop)
+        pComboName.OnSelect = function(pnSelf, nInd, sVal, anyData)
+          RunConsoleCommand(gsTool.."_material_name", anyData) end
   -- Material list selection
   pComboType.OnSelect = function(pnSelf, nInd, sVal, anyData)
-    RunConsoleCommand(gsTool.."_material_type", anyData)
     local iT = math.Clamp(anyData, 1, #tT)
-    local tN = list.GetForEdit(gsLisp..tT[iT])
-    pComboName:Clear()
+    local tN = list.GetForEdit(gsLisp..tT[iT]); pComboName:Clear()
     pComboName:SetValue(language.GetPhrase("tool."..gsTool..".material_name_def"))
     for iN = 1, #tN do pComboName:AddChoice(tN[iN], iN) end
-    pComboName.OnSelect = function(pnSelf, nInd, sVal, anyData)
-      RunConsoleCommand(gsTool.."_material_name", anyData)
-    end
+    RunConsoleCommand(gsTool.."_material_type", anyData)
   end
   CPanel:AddItem(pComboType)
   CPanel:AddItem(pComboName)
