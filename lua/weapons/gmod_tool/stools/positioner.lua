@@ -1,3 +1,7 @@
+local clYell = Color(255, 255, 0)
+local clGree = Color(0  , 255, 0)
+local gnSize = 100000
+
 TOOL.Category   = "Construction"
 TOOL.Name       = "#Positioner"
 TOOL.Command    = nil
@@ -11,10 +15,10 @@ TOOL.ClientConVar = {
 }
 if ( CLIENT ) then
   concommand.Add("positioner_cpy", function(oPly,oCom,oArgs)
-    local sAng = tostring(GetConVar("positioner_x"):GetFloat() or "0")..","..
+    local sPos = tostring(GetConVar("positioner_x"):GetFloat() or "0")..","..
                  tostring(GetConVar("positioner_y"):GetFloat() or "0")..","..
                  tostring(GetConVar("positioner_z"):GetFloat() or "0")
-    SetClipboardText(sAng)
+    SetClipboardText(sPos)
   end)
   concommand.Add("positioner_rst", function(oPly,oCom,oArgs)
     oPly:ConCommand("positioner_x 0\n")
@@ -30,6 +34,16 @@ function TOOL:GetFreeze()
   return (tonumber(self:GetClientNumber("freeze") or 0) ~= 0)
 end
 
+function TOOL:GetVector()
+  return Vector(self:GetClientNumber("x"),
+                self:GetClientNumber("y"),
+                self:GetClientNumber("z"))
+end
+
+function TOOL:GetView(oPly, vV, nR)
+  return (200 * nR) / (vV - oPly:GetPos()):Length()
+end
+
 function TOOL:LeftClick( Trace )
   if(CLIENT) then return true end
   local trEnt = Trace.Entity
@@ -39,9 +53,7 @@ function TOOL:LeftClick( Trace )
   if(phEnt) then
     phEnt:Sleep()
     if(freeze) then phEnt:EnableMotion(not freeze) end
-    phEnt:SetPos(Vector(self:GetClientNumber("x"),
-                        self:GetClientNumber("y"),
-                        self:GetClientNumber("z")))
+    phEnt:SetPos(self:GetVector())
     phEnt:Wake()
   end
   return true
@@ -53,7 +65,9 @@ function TOOL:RightClick( Trace )
   if(not (trEnt and trEnt:IsValid()) or (trEnt:IsPlayer())) then return end
   local phEnt = trEnt:GetPhysicsObjectNum(Trace.PhysicsBone)
   if(phEnt) then
-    local wPos, oPly = phEnt:GetPos(), self:GetOwner()
+    local oPly = self:GetOwner()
+    local bKey = oPly:KeyDown(IN_SPEED)
+    local wPos = (bKey and Trace.HitPos or phEnt:GetPos())
     oPly:ConCommand("positioner_x "..wPos.x);
     oPly:ConCommand("positioner_y "..wPos.y);
     oPly:ConCommand("positioner_z "..wPos.z);
@@ -79,25 +93,24 @@ end
 function TOOL:DrawHUD()
   local uiPly = LocalPlayer()
   local trEnt = uiPly:GetEyeTrace().Entity
-  local cYel = Color(255, 255, 0)
-  local xyEnd = Vector(self:GetClientNumber("x"),
-                       self:GetClientNumber("y"),
-                       self:GetClientNumber("z")):ToScreen()
+  local uvCli = self:GetVector()
+  local xyEnd = uvCli:ToScreen()
   if(trEnt and trEnt:IsValid()) then
-    local xyPos = trEnt:GetPos():ToScreen()
-    surface.DrawCircle(xyPos.x, xyPos.y, 10, 0,255, 0)
-    surface.SetDrawColor(cYel) 
-    surface.DrawLine(xyPos.x, xyPos.y, xyEnd.x, xyEnd.y)
-  end; surface.DrawCircle(xyEnd.x, xyEnd.y, 10, cYel)
+    local uvPos = trEnt:GetPos()
+    local xyPos = uvPos:ToScreen()
+    surface.DrawCircle(xyPos.x, xyPos.y, self:GetView(uiPly, uvPos, 10), clGree)
+    surface.SetDrawColor(clYell)
+    if(xyEnd.visible) then surface.DrawLine(xyPos.x, xyPos.y, xyEnd.x, xyEnd.y) end
+  end; surface.DrawCircle(xyEnd.x, xyEnd.y, self:GetView(uiPly, uvCli, 10), clYell)
 end
 
 function TOOL.BuildCPanel( CPanel )
   CPanel:SetName(language.GetPhrase("tool.positioner.name"))
   CPanel:Help   (language.GetPhrase("tool.positioner.desc"))
-  CPanel:Button("COPY", "positioner_cpy"):SetToolTip("Copy angle values")
-  CPanel:Button("RESET","positioner_rst"):SetToolTip("Reset angle convars")
-  CPanel:NumSlider("X", "positioner_x", -100000, 100000, 7):SetToolTip("Adjusts X axis position")
-  CPanel:NumSlider("Y", "positioner_y", -100000, 100000, 7):SetToolTip("Adjusts Y axis position")
-  CPanel:NumSlider("Z", "positioner_z", -100000, 100000, 7):SetToolTip("Adjusts Z axis position")
+  CPanel:Button("COPY", "positioner_cpy"):SetToolTip("Copy position values")
+  CPanel:Button("RESET","positioner_rst"):SetToolTip("Reset position convars")
+  CPanel:NumSlider("X", "positioner_x", -gnSize, gnSize, 7):SetToolTip("Change X axis position")
+  CPanel:NumSlider("Y", "positioner_y", -gnSize, gnSize, 7):SetToolTip("Change Y axis position")
+  CPanel:NumSlider("Z", "positioner_z", -gnSize, gnSize, 7):SetToolTip("Change Z axis position")
   CPanel:CheckBox("Freeze after change", "positioner_freeze")
 end
