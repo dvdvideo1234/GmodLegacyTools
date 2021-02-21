@@ -1,183 +1,352 @@
 -- Axis Centre tool - by Wenli
 
-TOOL.Category = "Constraints"
-TOOL.Name = "#Axis - Centre"
-TOOL.Command = nil
-TOOL.ConfigName = nil
+local gsTool = "axiscentre"
 
-TOOL.ClientConVar[ "forcelimit" ] = 0
-TOOL.ClientConVar[ "torquelimit" ] = 0
-TOOL.ClientConVar[ "hingefriction" ] = 0
-TOOL.ClientConVar[ "nocollide" ] = 0
-TOOL.ClientConVar[ "moveprop" ] = 0
-TOOL.ClientConVar[ "rot2nd" ] = 0
+TOOL.ClientConVar = {
+  [ "forcelimit"  ] = 0,
+  [ "torquelimit" ] = 0,
+  [ "friction"    ] = 0,
+  [ "nocollide"   ] = 0,
+  [ "moveprop"    ] = 0,
+  [ "rotsecond"   ] = 0,
+  [ "pikecount"   ] = 0,
+  [ "pikeiters"   ] = 100,
+  [ "pikelength"  ] = 0
+}
 
-if CLIENT then
-  language.Add("axiscentre","Axis - Center of Mass" )
-  language.Add("tool.axiscentre.name","Center Axis Constraint")
-  language.Add("tool.axiscentre.desc", "Axis props by center of mass" )
-  language.Add("tool.axiscentre.0", "Left Click: Select first prop." )
-  language.Add("tool.axiscentre.1", "Left Click: Select second prop." )
-  language.Add("tool.axiscentre.nocollide", "No-collide" )
-  language.Add("tool.axiscentre.rot2nd", "Rotation direction by second prop" )
-  language.Add("tool.axiscentre.moveprop", "Move first prop (remember to nocollide!)" )
-  language.Add("undone.axiscentre","Undone Center Axis")
+local gtConvar = TOOL:BuildConVarList()
+
+if(CLIENT) then
+
+  TOOL.Information = {
+    { name = "info"   , stage = 0, icon = "gui/lmb.png"},
+    { name = "info"   , stage = 1, icon = "gui/lmb.png"},
+    { name = "left"   , stage = 0, icon = "gui/rmb.png"},
+    { name = "right" },
+    { name = "reload"}
+  }
+
+  language.Add("tool."..gsTool..".category", "Constraints")
+  language.Add("tool."..gsTool..".name","Advanced Axis Center")
+  language.Add("tool."..gsTool..".desc", "Axis props by center of mass or pikes them as kebab")
+  language.Add("tool."..gsTool..".0", "Select first prop")
+  language.Add("tool."..gsTool..".1", "Select second prop")
+  language.Add("tool."..gsTool..".left", "Click to create axis center between two props")
+  language.Add("tool."..gsTool..".right", "Click to pike props in a multiple axis")
+  language.Add("tool."..gsTool..".reload", "Removes axis constraints from trace entity")
+  language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
+  language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
+  language.Add("tool."..gsTool..".torquelimit_con", "Torque limit:")
+  language.Add("tool."..gsTool..".torquelimit", "The amount of torque it takes for the constraint to break. Set 0 to never break")
+  language.Add("tool."..gsTool..".friction_con", "Rotation friction:")
+  language.Add("tool."..gsTool..".friction", "Adjusts the rotation friction of the axis created")
+  language.Add("tool."..gsTool..".pikelength_con", "Pike length:")
+  language.Add("tool."..gsTool..".pikelength", "Adjust the trace piked props when creating axes")
+  language.Add("tool."..gsTool..".pikecount_con", "Pike count:")
+  language.Add("tool."..gsTool..".pikecount", "Adjust the amount of piked props when creating axes")
+  language.Add("tool."..gsTool..".nocollide_con", "No-Collide" )
+  language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props" )
+  language.Add("tool."..gsTool..".rotsecond_con", "Second prop rotation" )
+  language.Add("tool."..gsTool..".rotsecond", "Rotation direction by second prop" )
+  language.Add("tool."..gsTool..".moveprop_con" , "Move first prop" )
+  language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide" )
+  language.Add("reload."..gsTool,"Undone Advanced Axis Center")
+  language.Add("undone."..gsTool,"Undone Advanced Axis Center")
 end
 
-function TOOL:LeftClick( trace )
-  if trace.Entity:IsPlayer() then return false end
-  if SERVER and !util.IsValidPhysicsObject( trace.Entity, trace.PhysicsBone ) then return false end
-  
-  local iNum = self:NumObjects()
-  local Phys = trace.Entity:GetPhysicsObjectNum( trace.PhysicsBone )
-  self:SetObject( iNum + 1, trace.Entity, trace.HitPos, Phys, trace.PhysicsBone, trace.HitNormal )
+TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category") or nil
+TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Command    = nil
+TOOL.ConfigName = nil
 
-  if iNum > 0 then
-    if CLIENT then
+function TOOL:GetRotatate()
+  return (self:GetClientNumber("rotsecond", 0) ~= 0)
+end
+
+function TOOL:GetMoveprop()
+  return (self:GetClientNumber("moveprop", 0) ~= 0)
+end
+
+function TOOL:GetNoCollide()
+  return math.floor(self:GetClientNumber("nocollide", 0))
+end
+
+function TOOL:GetFriction()
+  return math.Clamp(self:GetClientNumber("friction", 0), 0, 50000)
+end
+
+function TOOL:GetForceLimit()
+  return math.Clamp(self:GetClientNumber("forcelimit", 0), 0, 50000)
+end
+
+function TOOL:GetTorqueLimit()
+  return math.Clamp(self:GetClientNumber("torquelimit", 0), 0, 50000)
+end
+
+function TOOL:GetPikeLength()
+  return math.Clamp(self:GetClientNumber("pikelength", 0), 0, 1000)
+end
+
+function TOOL:GetPikeCount()
+  return math.Clamp(math.floor(self:GetClientNumber("pikecount", 0)), 0, 50)
+end
+
+function TOOL:GetPikeIters()
+  return math.Clamp(math.floor(self:GetClientNumber("pikeiters", 0)), 0, 500)
+end
+
+function TOOL:LeftClick(tr)
+  if(tr.Entity:IsPlayer()) then return false end
+  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+
+  local iNum = self:NumObjects()
+  local Phys = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
+  self:SetObject(iNum + 1, tr.Entity, tr.HitPos, Phys, tr.PhysicsBone, tr.HitNormal)
+
+  if(iNum > 0)then
+    if(CLIENT) then
       self:ClearObjects()
       return true
     end
-    
-    local ply = self:GetOwner()
-    
-    local forcelimit   = self:GetClientNumber( "forcelimit", 0 )
-    local torquelimit   = self:GetClientNumber( "torquelimit", 0 )
-    local nocollide   = self:GetClientNumber( "nocollide", 0 )
-    local friction     = self:GetClientNumber( "hingefriction", 0 )
-    local moveprop     = self:GetClientNumber( "moveprop", 0 )
-    local rot2nd    = self:GetClientNumber( "rot2nd", 0 )
-    
-    local Ent1,  Ent2  = self:GetEnt(1),  self:GetEnt(2)
-    local Bone1, Bone2 = self:GetBone(1),  self:GetBone(2)
-    local LPos1, LPos2 = self:GetLocalPos(1),self:GetLocalPos(2)
-    local WPos1, WPos2 = self:GetPos(1),  self:GetPos(2)
-    local Norm1, Norm2 = self:GetNormal(1),  self:GetNormal(2)
-    local Phys1, Phys2 = self:GetPhys(1), self:GetPhys(2)
-    
+
+    local user      = self:GetOwner()
+    local friction    = self:GetFriction()
+    local moveprop    = self:GetMoveprop()
+    local rotsecond   = self:GetRotatate()
+    local nocollide   = self:GetNoCollide()
+    local forcelimit  = self:GetForceLimit()
+    local torquelimit = self:GetTorqueLimit()
+
+    local Ent1,  Ent2  = self:GetEnt(1)     , self:GetEnt(2)
+    local WPos1, WPos2 = self:GetPos(1)     , self:GetPos(2)
+    local Phys1, Phys2 = self:GetPhys(1)    , self:GetPhys(2)
+    local Bone1, Bone2 = self:GetBone(1)    , self:GetBone(2)
+    local Norm1, Norm2 = self:GetNormal(1)  , self:GetNormal(2)
+    local LPos1, LPos2 = self:GetLocalPos(1), self:GetLocalPos(2)
+
     if Ent1 == Ent2 then
       self:ClearObjects()
-      ply:SendLua( "GAMEMODE:AddNotify('Error: Selected the same prop!',NOTIFY_GENERIC,7);" )
+      user:SendLua( "GAMEMODE:AddNotify('Constraining the same prop!', NOTIFY_ERROR, 7);" )
       return true
     end
-    
-    if moveprop == 1 and !Ent1:IsWorld() then      
-      // Move the object so that the hitpos on our object is at the second hitpos
-      local TargetPos = WPos2 + Phys1:GetPos() - WPos1
-      
-      print(tostring(TargetPos))
-      
-      Phys1:SetPos( TargetPos )
-      Phys1:EnableMotion( false )
-      
-      // Wake up the physics object so that the entity updates its position
+
+    if(moveprop and not Ent1:IsWorld()) then
+      -- Move the object so that the hitpos on our object is at the second hitpos
+      local Pos = WPos2 + Phys1:GetPos() - WPos1
+
+      Phys1:SetPos(Pos)
+      Phys1:EnableMotion(false)
+
+      -- Wake up the physics object so that the entity updates its position
       Phys1:Wake()
     end
-    
+
     LPos1 = Phys1:GetMassCenter()
-    
-    if rot2nd == 0 then
-      LPos2 = Phys2:WorldToLocal( Phys1:LocalToWorld(LPos1) + Norm1 )
+
+    if(rotsecond) then
+      LPos2 = Phys2:WorldToLocal(Phys1:LocalToWorld(LPos1) + Norm1)
     else
-      LPos2 = Phys2:WorldToLocal( Phys1:LocalToWorld(LPos1) + Norm2 )
+      LPos2 = Phys2:WorldToLocal(Phys1:LocalToWorld(LPos1) + Norm2)
     end
 
-    local constraint = constraint.Axis( Ent1, Ent2, Bone1, Bone2, LPos1, LPos2, forcelimit, torquelimit, friction, nocollide )
-    
+    local axis = constraint.Axis(Ent1, Ent2, Bone1, Bone2,
+      LPos1, LPos2, forcelimit, torquelimit, friction, nocollide)
+
     undo.Create("Axis Centre")
-      undo.AddEntity( constraint )
-      undo.SetPlayer( self:GetOwner() )
+      undo.AddEntity(axis)
+      undo.SetPlayer(user)
     undo.Finish()
-    
-    ply:AddCleanup( "constraints", constraint )
-    ply:SendLua( "GAMEMODE:AddNotify('Axis created',NOTIFY_GENERIC,7);" )
-    
-    Phys1:EnableMotion( false )
-    
+
+    user:AddCleanup("constraints", axis)
+    user:SendLua("GAMEMODE:AddNotify('Axis Center created', NOTIFY_GENERIC, 7);")
+
+    Phys1:EnableMotion(false)
+
     self:ClearObjects()
   else
-    self:SetStage( iNum + 1 )
+    self:SetStage(iNum + 1)
   end
 
   return true
 end
 
-function TOOL:Reload( trace )
-  if !trace.Entity:IsValid() or trace.Entity:IsPlayer() then return false end
-  if CLIENT then return true end
-  
+function TOOL:Reload(tr)
+  if( not tr.Entity:IsValid() or
+          tr.Entity:IsPlayer()) then return false end
+  if(CLIENT) then return true end
+
   self:SetStage(0)
-  return constraint.RemoveConstraints( trace.Entity, "Axis" )
+  return constraint.RemoveConstraints(tr.Entity, "Axis")
 end
 
-function TOOL:Holster( trace )
-  self:ClearObjects()  
-end
-    
-function TOOL:RightClick( trace )
+function TOOL:Holster(tr)
+  self:ClearObjects()
 end
 
-function TOOL.BuildCPanel( Panel )
-  Panel:AddControl("ComboBox",
-  {
-    Label = "#Presets",
-    MenuButton = 1,
-    Folder = "axiscentre",
-    Options = {},
-    CVars =
-    {
-      [0] = "axiscentre_forcelimit",
-      [1] = "axiscentre_torquelimit",
-      [2] = "axiscentre_hingefriction",
-      [3] = "axiscentre_nocollide",
-      [4] = "axiscentre_rot2nd"
-      }
-  })
-  
-  Panel:AddControl( "Slider",  {
-      Label  = "Force Limit",
-      Type  = "Float",
-      Min    = 0,
-      Max    = 50000,
-      Command = "axiscentre_forcelimit",
-      Description = "The amount of force it takes for the constraint to break. 0 means never break."}   )
-  
-  Panel:AddControl( "Slider",  {
-      Label  = "Torque Limit",
-      Type  = "Float",
-      Min    = 0,
-      Max    = 50000,
-      Command = "axiscentre_torquelimit",
-      Description = "The amount of torque it takes for the constraint to break. 0 means never break."}   )
-  
-  Panel:AddControl( "Slider",  {
-      Label  = "Rotation Friction",
-      Type  = "Float",
-      Min    = 0,
-      Max    = 100,
-      Command = "axiscentre_hingefriction",
-      Description = "Rotation friction of advanced axis in Z axis"}   )
-  
-  Panel:AddControl("Header",{Text = "#tool.axiscentre.name", Description  = "#tool.axiscentre.desc"})  
-  Panel:AddControl("CheckBox",{Label = "#tool.axiscentre.nocollide", Description = "", Command = "axiscentre_nocollide"})
-  Panel:AddControl("CheckBox",{Label = "#tool.axiscentre.moveprop", Description = "", Command = "axiscentre_moveprop"})
-  Panel:AddControl("CheckBox",{Label = "#tool.axiscentre.rot2nd", Description = "", Command = "axiscentre_rot2nd"})
-  
-  Panel:AddControl("Label", {
-    Text = ""
-  })
-  
-  
-  local button_help = vgui.Create( "DButton", Panel )
-  
-  button_help:SetText( "Help" )
-  button_help:SetToolTip( "Open online help using the Steam in-game browser" )
-  button_help.DoClick = function()
-    return gui.OpenURL( "http://sourceforge.net/userapps/mediawiki/wenli/index.php?title=Axis_Centre" )
+function TOOL:GetPikeAxis(tr, norm)
+  local tPike = {
+    Filt = 0, Limi = false,
+    Size = 0, Iter = 0,
+    Span = 0, Norm = Vector()
+  }
+
+  local pikecount  = self:GetPikeCount()
+  local pikelength = self:GetPikeLength()
+  if(pikelength <= 0) then return tPike end
+
+  tPike.Limi = (pikecount > 0)
+  tPike.Span = pikelength
+  tPike.Iter = self:GetPikeIters()
+
+  if(norm) then
+    tPike.Norm:Set(norm)
+    tPike.Norm:Normalize()
+  else
+    tPike.Norm:Set(tr.HitNormal)
+    tPike.Norm:Mul(-1)
+    tPike.Norm:Normalize()
   end
-  
-  button_help.PerformLayout = function()
-    button_help:SetSize(60, 20)
-    button_help:AlignRight(10)
-    button_help:AlignBottom(10)
+
+  tResult = {}
+
+  local tTrace = {
+    start  = Vector(), endpos = Vector(),
+    filter = {}, mask  = MASK_SOLID,
+    collisiongroup = COLLISION_GROUP_NONE,
+    ignoreworld = true, output = tResult
+  }
+  -- Put the trace entity in the ilter list
+  tPike.Filt = tPike.Filt + 1
+  tTrace.filter[tPike.Filt] = tr.Entity
+  -- Initialize ray trace data
+  tTrace.start:Set(tr.HitPos)
+  tTrace.endpos:Set(tPike.Norm)
+  tTrace.endpos:Mul(tPike.Span)
+  tTrace.endpos:Add(tTrace.start)
+
+  util.TraceLine(tTrace)
+
+  while(tResult.Hit and tPike.Span > 0 and tPike.Iter > 0) do
+    tPike.Iter = tPike.Iter - 1 -- Prevent infinite loops
+    tPike.Span = tPike.Span - (tResult.Fraction * tPike.Span)
+
+    if(tResult.Entity and
+       tResult.Entity ~= tr.Entity and
+       tResult.Entity:IsValid() and not
+       tResult.Entity:IsPlayer() and
+       util.IsValidPhysicsObject(tResult.Entity, tResult.PhysicsBone))
+    then
+      -- Apply the filter to make sure we dont hit already processed
+      tPike.Filt = tPike.Filt + 1
+      tTrace.filter[tPike.Filt] = tResult.Entity
+      -- Copy the trace data to the kebab table
+      tPike.Size = tPike.Size + 1
+      tPike[tPike.Size] = {}
+      tPike[tPike.Size].Ent = tResult.Entity
+      tPike[tPike.Size].Pos = Vector()
+      tPike[tPike.Size].Pos:Set(tResult.HitPos)
+      tPike[tPike.Size].Bone = tResult.PhysicsBone
+      tPike[tPike.Size].Norm = Vector()
+      tPike[tPike.Size].Norm:Set(tResult.HitNormal)
+
+      if(tPike.Limi) then
+        pikecount = pikecount - 1
+        if(pikecount <= 0) then break end
+      end
+    end
+
+    tTrace.start:Set(tResult.HitPos)
+    tTrace.endpos:Set(tPike.Norm)
+    tTrace.endpos:Mul(tPike.Span)
+    tTrace.endpos:Add(tTrace.start)
+
+    util.TraceLine(tTrace)
   end
+
+  return tPike
+end
+
+function TOOL:RightClick(tr)
+  if(tr.Entity:IsPlayer()) then return false end
+  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  if(self:NumObjects() > 0) then return false end
+
+  local user, norm = self:GetOwner()
+
+  if(user:KeyDown(IN_SPEED)) then
+    norm = user:GetAimVector()
+  end
+
+  local tPike = self:GetPikeAxis(tr, norm)
+
+  if(not tPike) then return false end
+  if(not tPike.Size) then return false end
+  if(not (tPike.Size > 0)) then return false end
+
+  local forcelimit  = self:GetForceLimit()
+  local torquelimit = self:GetTorqueLimit()
+  local nocollide   = self:GetNoCollide()
+  local friction    = self:GetFriction()
+
+  local Ent1  = tr.Entity
+  local WPos1 = tr.HitPos
+  local Norm1 = tr.HitNormal
+  local Bone1 = tr.PhysicsBone
+  local Phys1 = Ent1:GetPhysicsObject()
+  local LPos1 = Ent1:WorldToLocal(WPos1)
+
+  undo.Create("Axis Pike")
+
+  for iD = 1, tPike.Size do
+    local Ent2  = tPike[iD].Ent
+    local WPos2 = tPike[iD].Pos
+    local Norm2 = tPike[iD].Norm
+    local Bone2 = tPike[iD].Bone
+    local Phys2 = Ent2:GetPhysicsObject()
+    local LPos2 = Ent2:WorldToLocal(WPos2)
+
+    local axis = constraint.Axis(Ent1, Ent2, Bone1, Bone2,
+      LPos1, LPos2, forcelimit, torquelimit, friction, nocollide)
+
+    undo.AddEntity(axis)
+    undo.SetPlayer(user)
+    user:AddCleanup("constraints", axis)
+  end
+
+  undo.Finish()
+
+  user:SendLua("GAMEMODE:AddNotify('Axis Pike created ["..tPike.Size.."]', NOTIFY_GENERIC, 7);")
+
+  return true
+end
+
+function TOOL.BuildCPanel(CPanel) local pItem
+  CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
+
+  pItem = CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
+  pItem = CPanel:Help   (language.GetPhrase("tool."..gsTool..".desc"))
+
+  pItem = vgui.Create("ControlPresets", CPanel)
+  pItem:SetPreset(gsTool)
+  pItem:AddOption("Default", gtConvar)
+  for key, val in pairs(table.GetKeys(gtConvar)) do
+    pItem:AddConVar(val) end
+  CPanel:AddItem(pItem)
+
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".forcelimit_con"), gsTool.."_forcelimit", 0, 50000, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".forcelimit"))
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".torquelimit_con"), gsTool.."_torquelimit", 0, 50000, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".torquelimit"))
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".friction_con"), gsTool.."_friction", 0, 10000, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".friction"))
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".pikelength_con"), gsTool.."_pikelength", 0, 1000, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".pikelength"))
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".pikecount_con"), gsTool.."_pikecount", 0, 50, 0)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".pikecount"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".nocollide_con"), gsTool.."_nocollide")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".nocollide"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".moveprop_con"), gsTool.."_moveprop")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".moveprop"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".rotsecond_con"), gsTool.."_rotsecond")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".rotsecond"))
 end
