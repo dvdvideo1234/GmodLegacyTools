@@ -27,7 +27,7 @@ if(CLIENT) then
   }
 
   language.Add("tool."..gsTool..".category", "Constraints")
-  language.Add("tool."..gsTool..".name","Advanced Axis Center")
+  language.Add("tool."..gsTool..".name","Axis Center Adv")
   language.Add("tool."..gsTool..".desc", "Axis props by center of mass or pikes them as kebab")
   language.Add("tool."..gsTool..".0", "Select first prop")
   language.Add("tool."..gsTool..".1", "Select second prop")
@@ -48,13 +48,13 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props" )
   language.Add("tool."..gsTool..".rotsecond_con", "Second prop rotation" )
   language.Add("tool."..gsTool..".rotsecond", "Rotation direction by second prop" )
-  language.Add("tool."..gsTool..".moveprop_con" , "Move first prop" )
-  language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide" )
+  language.Add("tool."..gsTool..".moveprop_con", "Move first prop")
+  language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide")
   language.Add("reload."..gsTool,"Undone Advanced Axis Center")
   language.Add("undone."..gsTool,"Undone Advanced Axis Center")
 end
 
-TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category") or nil
+TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
