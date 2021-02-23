@@ -8,6 +8,7 @@ TOOL.ClientConVar = {
   [ "nocollide"   ] = 0,
   [ "moveprop"    ] = 0,
   [ "simplemode"  ] = 0,
+  [ "freemove"    ] = 0,
   [ "rotateonly"  ] = 0,
   [ "cxrotfric"   ] = 0,
   [ "cyrotfric"   ] = 0,
@@ -23,20 +24,34 @@ TOOL.ClientConVar = {
 local gtConvar = TOOL:BuildConVarList()
 
 if(CLIENT) then
+
+  TOOL.Information = {
+    { name = "info.0" , stage = 0, icon = "gui/info"},
+    { name = "info.1" , stage = 1, icon = "gui/info"},
+    { name = "left" , stage = 0, icon = "gui/lmb.png"},
+    { name = "right", stage = 0, icon = "gui/rmb.png"},
+    { name = "reload"}
+  }
+
   language.Add("tool."..gsTool..".category", "Constraints")
-  language.Add("tool."..gsTool..".name","BallSocket Center Adv")
+  language.Add("tool."..gsTool..".name","Ball Socket Center Adv")
   language.Add("tool."..gsTool..".desc", "Ball socket props by centre of mass")
-  language.Add("tool."..gsTool..".0", "Select prop to ball socket")
-  language.Add("tool."..gsTool..".1", "Select base prop to ball socket to")
+  language.Add("tool."..gsTool..".info.0", "Select first prop")
+  language.Add("tool."..gsTool..".info.1", "Select second prop")
+  language.Add("tool."..gsTool..".left", "Create ball socket between two props")
+  language.Add("tool."..gsTool..".right", "Create three ball sockets for shaft support")
+  language.Add("tool."..gsTool..".reload", "Removes axis constraints from trace entity")
   language.Add("tool."..gsTool..".torquelimit_con", "Torque Limit:")
   language.Add("tool."..gsTool..".torquelimit", "The amount of torque it takes for the constraint to break. Set 0 to never break")
   language.Add("tool."..gsTool..".forcelimit_con", "Force Limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
   language.Add("tool."..gsTool..".nocollide_con", "No-Collide")
   language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props")
+  language.Add("tool."..gsTool..".freemove_con", "Free movement")
+  language.Add("tool."..gsTool..".freemove", "Limits the rotation only. Allow props to move freely")
   language.Add("tool."..gsTool..".moveprop_con", "Move first prop")
   language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide")
-  language.Add("tool."..gsTool..".simplemode_con", "Simple Ball Socket. Ignore adv settings")
+  language.Add("tool."..gsTool..".simplemode_con", "Ignore angle limists")
   language.Add("tool."..gsTool..".simplemode", "Create a simple ballsocket with no angle limits")
   language.Add("tool."..gsTool..".rotateonly_con", "Rotation constraint")
   language.Add("tool."..gsTool..".rotateonly_dsc", "Note: The Rotation Constraint creates 3 separate X/Y/Z ball sockets to match rotation between the two constrained entities. Selecting this option overrides all other settings besides nocollide and force limit.")
@@ -53,20 +68,26 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".czrotmin", "Rotation minimum of advanced ballsocket in Z axis")
   language.Add("tool."..gsTool..".czrotmax_con", "Z Rotation max:")
   language.Add("tool."..gsTool..".czrotmax", "Rotation maximum of advanced ballsocket in Z axis")
-  language.Add("tool."..gsTool..".cxrotmax_con", "X Friction:")
-  language.Add("tool."..gsTool..".cxrotmax", "Rotation friction of advanced ballsocket in X axis")
-  language.Add("tool."..gsTool..".cyrotmax_con", "Y Friction:")
-  language.Add("tool."..gsTool..".cyrotmax", "Rotation friction of advanced ballsocket in Y axis")
-  language.Add("tool."..gsTool..".czrotmax_con", "Z Friction:")
-  language.Add("tool."..gsTool..".czrotmax", "Rotation friction of advanced ballsocket in Z axis")
-  language.Add("reload."..gsTool,"Undone Advanced BallSocket Center")
-  language.Add("undone."..gsTool,"Undone Advanced BallSocket Center")
+  language.Add("tool."..gsTool..".cxrotfric_con", "X Friction:")
+  language.Add("tool."..gsTool..".cxrotfric", "Rotation friction of advanced ballsocket in X axis")
+  language.Add("tool."..gsTool..".cyrotfric_con", "Y Friction:")
+  language.Add("tool."..gsTool..".cyrotfric", "Rotation friction of advanced ballsocket in Y axis")
+  language.Add("tool."..gsTool..".czrotfric_con", "Z Friction:")
+  language.Add("tool."..gsTool..".czrotfric", "Rotation friction of advanced ballsocket in Z axis")
+  language.Add("reload."..gsTool,"Undone Advanced Ballsocket Center")
+  language.Add("undone."..gsTool,"Undone Advanced Ballsocket Center")
 end
 
 TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
+
+function TOOL:NotifyUser(sMsg, sNot, iSiz)
+  local user = self:GetOwner()
+  local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
+  user:SendLua(fmsg:format(sMsg, sNot, iSiz))
+end
 
 function TOOL:GetRotationFriction()
   return math.Clamp(self:GetClientNumber("cxrotfric", 0), 0, 100),
@@ -88,6 +109,10 @@ end
 
 function TOOL:GetNoCollide()
   return math.floor(self:GetClientNumber("nocollide", 0))
+end
+
+function TOOL:GetFreeMove()
+  return math.floor(self:GetClientNumber("freemove", 0))
 end
 
 function TOOL:GetRotateOnly()
@@ -133,6 +158,7 @@ function TOOL:LeftClick(tr)
     end
 
     local user        = self:GetOwner()
+    local freemove    = self:GetFreeMove()
     local moveprop    = self:GetMoveProp()
     local nocollide   = self:GetNoCollide()
     local simplemode  = self:GetSimpleMode()
@@ -148,7 +174,7 @@ function TOOL:LeftClick(tr)
 
     if(Ent1 == Ent2) then
       self:ClearObjects()
-      user:SendLua( "GAMEMODE:AddNotify('Selected the same prop!',NOTIFY_ERROR, 7);" )
+      self:NotifyUser("Selected the same prop!", "ERROR", 7)
       return true
     end
 
@@ -167,6 +193,7 @@ function TOOL:LeftClick(tr)
 
     if(rotateonly) then
       undo.Create("Rotation Constraint")
+
       local BS1 = constraint.AdvBallsocket(Ent1, Ent2, Bone1, Bone2, LPos1, LPos2, 0,
         torquelimit,    0, -180, -180,   0, 180, 180, 50,  0,  0, 1, nocollide)
       local BS2 = constraint.AdvBallsocket(Ent1, Ent2, Bone1, Bone2, LPos1, LPos2, 0,
@@ -178,7 +205,9 @@ function TOOL:LeftClick(tr)
       undo.AddEntity(BS2); user:AddCleanup("constraints", BS2)
       undo.AddEntity(BS3); user:AddCleanup("constraints", BS3)
 
-      user:SendLua( "GAMEMODE:AddNotify('Rotation constraint created', NOTIFY_GENERIC, 7);" )
+      undo.SetPlayer(user); undo.Finish()
+
+      self:NotifyUser("Rotation constraint created!", "GENERIC", 7)
     else
       undo.Create("Ballsocket Centre")
 
@@ -192,17 +221,16 @@ function TOOL:LeftClick(tr)
         local cxrotfric, cyrotfric, czrotfric = self:GetRotationFriction()
 
         local socket = constraint.AdvBallsocket(Ent1, Ent2, Bone1, Bone2, LPos1, LPos2, forcelimit, torquelimit,
-          cxrotmin, cyrotmin, czrotmin, cxrotmax, cyrotmax, czrotmax, cxrotfric, cyrotfric, czrotfric, 0, nocollide)
+          cxrotmin, cyrotmin, czrotmin, cxrotmax, cyrotmax, czrotmax, cxrotfric, cyrotfric, czrotfric, freemove, nocollide)
 
         undo.AddEntity(socket)
         user:AddCleanup("constraints", socket)
       end
 
-      user:SendLua( "GAMEMODE:AddNotify('BallSocket center created', NOTIFY_GENERIC, 7);" )
-    end
+      undo.SetPlayer(user); undo.Finish()
 
-    undo.SetPlayer(user)
-    undo.Finish()
+      self:NotifyUser("Ballsocket center created!", "GENERIC", 7)
+    end
 
     Phys1:EnableMotion(false)
 
@@ -216,6 +244,12 @@ end
 
 function TOOL:Reload(tr)
   if(CLIENT) then return true end
+
+  if(tr.HitWorld) then
+    self:NotifyUser("Stage cleared!", "CLEANUP", 7)
+    self:ClearObjects(); return true
+  end
+
   if(not tr.Entity:IsValid() or
          tr.Entity:IsPlayer()) then return false end
 
@@ -230,9 +264,65 @@ function TOOL:Holster(tr)
 end
 
 function TOOL:RightClick(tr)
-  -- TODO: Think what to put here.. Seriously
+  if(tr.Entity:IsPlayer()) then return false end
+  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+
+  local phy = tr.Entity:GetPhysicsObject()
+  local cen = tr.Entity:LocalToWorld(phy:GetMassCenter())
+  local min = tr.Entity:LocalToWorld(tr.Entity:OBBMins())
+  local max = tr.Entity:LocalToWorld(tr.Entity:OBBMaxs())
+
+  local dmin = Vector(min); dmin:Sub(cen)
+  local dmax = Vector(min); dmax:Sub(cen)
+  local dist = (math.abs(dmin:Dot(tr.HitNormal)) +
+                math.abs(dmax:Dot(tr.HitNormal))) / 2
+
+  if(dist <= 0) then
+    self:NotifyUser("Constraint shaft invalid!", "ERROR", 7)
+    return false
+  end
+
+  min:Set(tr.HitNormal); min:Mul( dist); min:Add(cen)
+  max:Set(tr.HitNormal); max:Mul(-dist); max:Add(cen)
+
+  local data = util.TraceLine({
+    start  = min, endpos = max,
+    filter = tr.Entity, mask  = MASK_SOLID,
+    collisiongroup = COLLISION_GROUP_NONE,
+    ignoreworld = true
+  })
+
+  if(data and data.Hit and data.Entity and data.Entity:IsValid()) then
+
+    local user         = self:GetOwner()
+    local nocollide    = self:GetNoCollide()
+    local forcelimit   = self:GetForceLimit()
+    local torquelimit  = self:GetTorqueLimit()
+    local Ent1, Ent2   = tr.Entity, data.Entity
+    local Bone2, Bone1 = tr.PhysicsBone, data.PhysicsBone
+    local LP1 = Ent1:WorldToLocal(max)
+    local LP2 = Ent1:WorldToLocal(cen)
+    local LP3 = Ent1:WorldToLocal(min)
+
+    undo.Create("Shaft Constraint")
+
+    local BS1 = constraint.Ballsocket(Ent2, Ent1, Bone2, Bone1, LP1, forcelimit, torquelimit, nocollide)
+    local BS2 = constraint.Ballsocket(Ent2, Ent1, Bone2, Bone1, LP2, forcelimit, torquelimit, nocollide)
+    local BS3 = constraint.Ballsocket(Ent2, Ent1, Bone2, Bone1, LP3, forcelimit, torquelimit, nocollide)
+
+    undo.AddEntity(BS1); user:AddCleanup("constraints", BS1)
+    undo.AddEntity(BS2); user:AddCleanup("constraints", BS2)
+    undo.AddEntity(BS3); user:AddCleanup("constraints", BS3)
+
+    undo.SetPlayer(user); undo.Finish()
+
+    self:NotifyUser("Constraint shaft ["..math.Round(dist, 2).."]!", "GENERIC", 7)
+  end
+
+  return true
 end
 
+-- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel) local pItem
   CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
 
@@ -270,6 +360,8 @@ function TOOL.BuildCPanel(CPanel) local pItem
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".czrotfric"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".nocollide_con"), gsTool.."_nocollide")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".nocollide"))
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".freemove_con"), gsTool.."_freemove")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".freemove"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".moveprop_con"), gsTool.."_moveprop")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".moveprop"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".simplemode_con"), gsTool.."_simplemode")

@@ -19,20 +19,20 @@ local gtConvar = TOOL:BuildConVarList()
 if(CLIENT) then
 
   TOOL.Information = {
-    { name = "info"   , stage = 0, icon = "gui/lmb.png"},
-    { name = "info"   , stage = 1, icon = "gui/lmb.png"},
-    { name = "left"   , stage = 0, icon = "gui/rmb.png"},
-    { name = "right" },
+    { name = "info.0" , stage = 0, icon = "gui/info"},
+    { name = "info.1" , stage = 1, icon = "gui/info"},
+    { name = "left" , stage = 0, icon = "gui/lmb.png"},
+    { name = "right", stage = 0, icon = "gui/rmb.png"},
     { name = "reload"}
   }
 
   language.Add("tool."..gsTool..".category", "Constraints")
   language.Add("tool."..gsTool..".name","Axis Center Adv")
   language.Add("tool."..gsTool..".desc", "Axis props by center of mass or pikes them as kebab")
-  language.Add("tool."..gsTool..".0", "Select first prop")
-  language.Add("tool."..gsTool..".1", "Select second prop")
-  language.Add("tool."..gsTool..".left", "Click to create axis center between two props")
-  language.Add("tool."..gsTool..".right", "Click to pike props in a multiple axis")
+  language.Add("tool."..gsTool..".info.0", "Select first prop")
+  language.Add("tool."..gsTool..".info.1", "Select second prop")
+  language.Add("tool."..gsTool..".left", "Create axis center between two props")
+  language.Add("tool."..gsTool..".right", "Pike props behind with multiple axis")
   language.Add("tool."..gsTool..".reload", "Removes axis constraints from trace entity")
   language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
@@ -58,6 +58,12 @@ TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool
 TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
+
+function TOOL:NotifyUser(sMsg, sNot, iSiz)
+  local user = self:GetOwner()
+  local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
+  user:SendLua(fmsg:format(sMsg, sNot, iSiz))
+end
 
 function TOOL:GetRotatate()
   return (self:GetClientNumber("rotsecond", 0) ~= 0)
@@ -126,7 +132,7 @@ function TOOL:LeftClick(tr)
 
     if Ent1 == Ent2 then
       self:ClearObjects()
-      user:SendLua( "GAMEMODE:AddNotify('Constraining the same prop!', NOTIFY_ERROR, 7);" )
+      self:NotifyUser("Selected the same prop!", "ERROR", 7)
       return true
     end
 
@@ -158,7 +164,7 @@ function TOOL:LeftClick(tr)
     undo.Finish()
 
     user:AddCleanup("constraints", axis)
-    user:SendLua("GAMEMODE:AddNotify('Axis Center created', NOTIFY_GENERIC, 7);")
+    self:NotifyUser("Axis Center created!", "GENERIC", 7)
 
     Phys1:EnableMotion(false)
 
@@ -171,9 +177,15 @@ function TOOL:LeftClick(tr)
 end
 
 function TOOL:Reload(tr)
+  if(CLIENT) then return true end
+
+  if(tr.HitWorld) then
+    self:NotifyUser("Stage cleared!", "CLEANUP", 7)
+    self:ClearObjects(); return true
+  end
+
   if( not tr.Entity:IsValid() or
           tr.Entity:IsPlayer()) then return false end
-  if(CLIENT) then return true end
 
   self:SetStage(0)
   return constraint.RemoveConstraints(tr.Entity, "Axis")
@@ -314,12 +326,12 @@ function TOOL:RightClick(tr)
   end
 
   undo.Finish()
-
-  user:SendLua("GAMEMODE:AddNotify('Axis Pike created ["..tPike.Size.."]', NOTIFY_GENERIC, 7);")
+  self:NotifyUser("Axis Pike created ["..tPike.Size.."]!", "GENERIC", 7)
 
   return true
 end
 
+-- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel) local pItem
   CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
 
