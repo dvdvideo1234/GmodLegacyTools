@@ -128,8 +128,6 @@ function TOOL:LeftClick(tr)
   local trCls = trEnt:GetClass(); if(gtDisc[trCls]) then
     self:NotifyUser("Class disabled "..trCls.."!", "ERROR", 7); return false end
 
-print(key)
-
   local key      = self:GetKey()
   local maxitems = self:GetMaxItems()
   local strength = self:GetStrength()
