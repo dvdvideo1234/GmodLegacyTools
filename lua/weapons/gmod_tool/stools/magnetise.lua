@@ -1,10 +1,17 @@
-local gsTool = "magnetise"
-local gtDisc {["phys_magnet"] = true, ["prop_ragdoll"] = true}
+local gsItem = "magnet"
+local gsLimn = gsItem.."s"
+local gsTool = gsItem.."ise"
+local vrMaxm = CreateConVar("sbox_max"..gsLimn, 10,
+  FCVAR_NONE, "Maximum magnets created on the server", 0, 50)
+local gtDisc = {
+  ["phys_magnet"] = true,
+  ["prop_ragdoll"] = true
+}
 
 TOOL.ClientConVar = {
   [ "strength" ] = 25000,
   [ "key"      ] = 153,
-  [ "maxitems" ] = 0,
+  [ "maxitems" ] = 10,
   [ "nopull"   ] = 0,
   [ "allowrot" ] = 0,
   [ "starton"  ] = 0,
@@ -16,12 +23,12 @@ TOOL.ClientConVar = {
 
 local gtConvar = TOOL:BuildConVarList()
 
-cleanup.Register("magnet")
+cleanup.Register(gsLimn)
 
 if(CLIENT) then
 
   TOOL.Information = {
-    { name = "info.0" , stage = 0, icon = "gui/info"},
+    { name = "info" , stage = 0, icon = "gui/info"},
     { name = "left" , stage = 0, icon = "gui/lmb.png"},
     { name = "right", stage = 0, icon = "gui/rmb.png"},
     { name = "reload"}
@@ -30,34 +37,34 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Construction")
   language.Add("tool."..gsTool..".name", "Magnetise")
   language.Add("tool."..gsTool..".desc", "Magnetises props, of course!")
+  language.Add("tool."..gsTool..".0", "Creates magnets or turns props into magnets")
   language.Add("tool."..gsTool..".left", "Turn the prop into a magnet")
   language.Add("tool."..gsTool..".right", "Spawn a magnet from cache")
   language.Add("tool."..gsTool..".reload", "Removes the magnet")
-  language.Add("tool."..gsTool..".0", "Left click to magnetise a prop, right click to attach a magnet")
   language.Add("tool."..gsTool..".maxitems_con", "Maximum items:")
-  language.Add("tool."..gsTool..".maxitems", "Maximum items the magnet can hold at once")
+  language.Add("tool."..gsTool..".maxitems", "Maximum items the magnet can hold at the same time")
   language.Add("tool."..gsTool..".strength_con", "Strength:")
   language.Add("tool."..gsTool..".strength", "Strength of the magnet. The power to hold stuff")
-  language.Add("tool."..gsTool..".starton_con", "Start On")
+  language.Add("tool."..gsTool..".starton_con", "Start on spawn")
   language.Add("tool."..gsTool..".starton", "Enables the magnet after being spawned")
-  language.Add("tool."..gsTool..".toggle_con", "Toggle")
-  language.Add("tool."..gsTool..".toggle", "Pressing the key toggles the magnet")
-  language.Add("tool."..gsTool..".nopull_con", "Pull props")
+  language.Add("tool."..gsTool..".toggle_con", "Toggle attraction")
+  language.Add("tool."..gsTool..".toggle", "Pressing the key toggles the magnet or you have to hold the key to keep it enabled")
+  language.Add("tool."..gsTool..".nopull_con", "Disable pull")
   language.Add("tool."..gsTool..".nopull", "Disallows the magnet to pull objects towards it")
   language.Add("tool."..gsTool..".allowrot_con", "Allow rotation")
   language.Add("tool."..gsTool..".allowrot", "Allows rotation of the objects attached")
-  language.Add("tool."..gsTool..".frozen_con", "Frozen")
-  language.Add("tool."..gsTool..".frozen", "Freeze the magnet on start")
+  language.Add("tool."..gsTool..".frozen_con", "Freeze on start")
+  language.Add("tool."..gsTool..".frozen", "Freezes the magnet on start")
   language.Add("tool."..gsTool..".key_con", "Key button:")
   language.Add("tool."..gsTool..".key", "Click to update the key enumerator for the magnet")
   language.Add("cleanup.magnet", "Magnets")
   language.Add("reload."..gsTool,"Undone magnet")
   language.Add("undone."..gsTool,"Undone magnet")
-  language.Add("sboxlimit."..gsTool,"You have hit the magnets limit!")
+  language.Add("sboxlimit.magnet","You have hit the magnets limit!")
 end
 
-TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category")
-TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
+TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
 
@@ -101,22 +108,27 @@ end
 
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end
-  if(tr) then return false end
+  if(not tr) then return false end
 
-  local trEnt, user = trace.Entity, self:GetOwner();
+  local trEnt, user = tr.Entity, self:GetOwner()
 
-  if(user:CheckLimit("magnet")) then
-    self:NotifyUser("PLayer limit reached!", "ERROR", 7); return false end
+  if(not user:CheckLimit(gsLimn)) then
+    self:NotifyUser("Limit reached!", "ERROR", 7); return false end
 
-  if(not (trEnt and trEnt:IsValid() and not trEnt:IsPlayer())) then
+  if(not (trEnt and trEnt:IsValid())) then
     self:NotifyUser("Trace invalid!", "ERROR", 7); return false end
+
+  if(trEnt:IsPlayer()) then
+    self:NotifyUser("Trace player!", "ERROR", 7); return false end
 
   -- If there's no physics object then we PROBABLY can't make it a magnet
   local trPhy = trEnt:GetPhysicsObject(); if(not (trPhy and trPhy:IsValid())) then
     self:NotifyUser("Physics invalid!", "ERROR", 7); return false end
 
   local trCls = trEnt:GetClass(); if(gtDisc[trCls]) then
-    self:NotifyUser("Class disabled ["..trCls.."]!", "ERROR", 7); return false end
+    self:NotifyUser("Class disabled "..trCls.."!", "ERROR", 7); return false end
+
+print(key)
 
   local key      = self:GetKey()
   local maxitems = self:GetMaxItems()
@@ -125,7 +137,7 @@ function TOOL:LeftClick(tr)
   local allowrot = self:GetRotAllow()
   local starton  = self:GetStartOn()
   local toggle   = self:GetToggleOn()
-  local asleep   = trPhys:IsAsleep()
+  local asleep   = trPhy:IsAsleep()
   local frozen   = self:GetFrozen()
 
   local eMag = construct.Magnet(
@@ -150,7 +162,10 @@ function TOOL:LeftClick(tr)
       undo.SetPlayer(user)
     undo.Finish()
 
-    user:AddCleanup("magnet", eMag)
+    trEnt:Remove()
+    eMag:SetCreator(user)
+    user:AddCount(gsLimn, eMag)
+    user:AddCleanup(gsLimn, eMag)
 
     return true
   end
@@ -159,13 +174,20 @@ end
 
 function TOOL:RightClick(tr)
   if(CLIENT) then return true end
-  if(tr) then return false end
+  if(not tr) then return false end
 
   if(tr.HitWorld) then
-    local pos = Vector(tr.HitNormal); pos:Mul(ent:OBBMins().z); pos:Add(tr.HitPos)
-    local ang = tr.HirNormal:Angle(); ang.pitch = ang.pitch + 90
+    local trEnt, user = tr.Entity, self:GetOwner()
+    local trNrm, trPos = tr.HitNormal, tr.HitPos
+    local ang = trNrm:Angle(); ang.pitch = ang.pitch + 90
     local mod = self:GetClientInfo("model", "")
     local mat = self:GetClientInfo("material", "")
+
+    if(mod == "") then
+      self:NotifyUser("Model empty!", "ERROR", 7); return false end
+
+    if(not user:CheckLimit(gsLimn)) then
+      self:NotifyUser("Limit reached!", "ERROR", 7); return false end
 
     local key      = self:GetKey()
     local maxitems = self:GetMaxItems()
@@ -177,12 +199,14 @@ function TOOL:RightClick(tr)
     local frozen   = self:GetFrozen()
 
     local eMag = construct.Magnet(
-          user, pos, ang, mod, mat,
+          user, trPos, ang, mod, mat,
           key, maxitems, strength,
           nopull, allowrot, starton,
           toggle, nil, nil, frozen)
 
     if (eMag and eMag:IsValid()) then
+      local pos = Vector(trNrm); pos:Mul(-eMag:OBBMins().z); pos:Add(trPos)
+      local ang = trNrm:Angle(); ang.pitch = ang.pitch + 90
 
       DoPropSpawnedEffect(eMag)
 
@@ -191,7 +215,11 @@ function TOOL:RightClick(tr)
         undo.SetPlayer(user)
       undo.Finish()
 
-      user:AddCleanup("magnet", eMag)
+      eMag:SetPos(pos)
+      eMag:SetAngles(ang)
+      eMag:SetCreator(user)
+      user:AddCount(gsLimn, eMag)
+      user:AddCleanup(gsLimn, eMag)
 
       return true
     end
@@ -204,10 +232,18 @@ function TOOL:RightClick(tr)
   end
 end
 
-function TOOL:Reload()
-  return true
+function TOOL:Reload(tr)
+  if(CLIENT) then return true end
+  if(not tr) then return false end
+  if(tr.HitWorld) then return false end
+
+  if(tr.Entity:GetClass() == "phys_magnet" and
+     self:GetOwner() == tr.Entity:GetCreator())
+  then tr.Entity:Remove(); return true end
+  return false
 end
 
+-- Enter `spawnmenu_reload` in the console to reload the panel
 function TOOL.BuildCPanel(CPanel) local pItem
   CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
 
@@ -229,8 +265,10 @@ function TOOL.BuildCPanel(CPanel) local pItem
 
   pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".maxitems_con"), gsTool.."_maxitems", 0, 100, 0)
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".maxitems"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_maxitems"])
   pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".strength_con"), gsTool.."_strength", 0, 50000, 0)
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".strength"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_strength"])
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".nopull_con"), gsTool.."_nopull")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".nopull"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".allowrot_con"), gsTool.."_allowrot")

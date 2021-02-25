@@ -54,8 +54,8 @@ if(CLIENT) then
   language.Add("undone."..gsTool,"Undone Advanced Axis Center")
 end
 
-TOOL.Category   = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".category")
-TOOL.Name       = (language and language.GetPhrase) and language.GetPhrase("tool."..gsTool..".name")
+TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
+TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
 
