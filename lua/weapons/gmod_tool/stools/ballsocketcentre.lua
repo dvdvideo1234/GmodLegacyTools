@@ -273,7 +273,7 @@ function TOOL:RightClick(tr)
   local max = tr.Entity:LocalToWorld(tr.Entity:OBBMaxs())
 
   local dmin = Vector(min); dmin:Sub(cen)
-  local dmax = Vector(min); dmax:Sub(cen)
+  local dmax = Vector(max); dmax:Sub(cen)
   local dist = (math.abs(dmin:Dot(tr.HitNormal)) +
                 math.abs(dmax:Dot(tr.HitNormal))) / 2
 
