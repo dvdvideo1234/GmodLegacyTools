@@ -1,6 +1,6 @@
--- Axis Centre tool - by Wenli
+-- Axis Center tool - by Wenli
 
-local gsTool = "axiscentre"
+local gsTool = "axiscenter"
 
 TOOL.ClientConVar = {
   [ "forcelimit"  ] = 0,
@@ -9,9 +9,9 @@ TOOL.ClientConVar = {
   [ "nocollide"   ] = 0,
   [ "moveprop"    ] = 0,
   [ "rotsecond"   ] = 0,
-  [ "pikecount"   ] = 0,
+  [ "pikecount"   ] = 1,
   [ "pikeiters"   ] = 100,
-  [ "pikelength"  ] = 0
+  [ "pikelength"  ] = 16
 }
 
 local gtConvar = TOOL:BuildConVarList()
@@ -44,10 +44,10 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".pikelength", "Adjust the trace piked props when creating axes")
   language.Add("tool."..gsTool..".pikecount_con", "Pike count:")
   language.Add("tool."..gsTool..".pikecount", "Adjust the amount of piked props when creating axes")
-  language.Add("tool."..gsTool..".nocollide_con", "No-Collide" )
-  language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props" )
-  language.Add("tool."..gsTool..".rotsecond_con", "Second prop rotation" )
-  language.Add("tool."..gsTool..".rotsecond", "Rotation direction by second prop" )
+  language.Add("tool."..gsTool..".nocollide_con", "No-Collide")
+  language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props")
+  language.Add("tool."..gsTool..".rotsecond_con", "Second prop rotation")
+  language.Add("tool."..gsTool..".rotsecond", "Rotation direction by second prop")
   language.Add("tool."..gsTool..".moveprop_con", "Move first prop")
   language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide")
   language.Add("reload."..gsTool,"Undone Advanced Axis Center")
@@ -115,7 +115,7 @@ function TOOL:LeftClick(tr)
       return true
     end
 
-    local user      = self:GetOwner()
+    local user        = self:GetOwner()
     local friction    = self:GetFriction()
     local moveprop    = self:GetMoveprop()
     local rotsecond   = self:GetRotatate()
@@ -158,7 +158,7 @@ function TOOL:LeftClick(tr)
     local axis = constraint.Axis(Ent1, Ent2, Bone1, Bone2,
       LPos1, LPos2, forcelimit, torquelimit, friction, nocollide)
 
-    undo.Create("Axis Centre")
+    undo.Create("Axis Center")
       undo.AddEntity(axis)
       undo.SetPlayer(user)
     undo.Finish()
@@ -198,10 +198,11 @@ end
 function TOOL:GetPikeAxis(tr, norm)
   local tPike = {
     Filt = 0, Limi = false,
-    Size = 0, Iter = 0,
+    Size = 2, Iter = 0,
     Span = 0, Norm = Vector()
   }
 
+  local user       = self:GetOwner()
   local pikecount  = self:GetPikeCount()
   local pikelength = self:GetPikeLength()
   if(pikelength <= 0) then return tPike end
@@ -227,9 +228,12 @@ function TOOL:GetPikeAxis(tr, norm)
     collisiongroup = COLLISION_GROUP_NONE,
     ignoreworld = true, output = tResult
   }
-  -- Put the trace entity in the ilter list
-  tPike.Filt = tPike.Filt + 1
-  tTrace.filter[tPike.Filt] = tr.Entity
+
+  -- Put the trace entity in the filter list
+  tTrace.filter[1] = user
+  tTrace.filter[2] = tr.Entity
+  tPike.Filt = #tTrace.filter
+
   -- Initialize ray trace data
   tTrace.start:Set(tr.HitPos)
   tTrace.endpos:Set(tPike.Norm)
@@ -326,7 +330,7 @@ function TOOL:RightClick(tr)
   end
 
   undo.Finish()
-  self:NotifyUser("Axis Pike created ["..tPike.Size.."]!", "GENERIC", 7)
+  self:NotifyUser("Axis Pike created "..tPike.Size.."!", "GENERIC", 7)
 
   return true
 end

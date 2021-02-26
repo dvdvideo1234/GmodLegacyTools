@@ -1,6 +1,6 @@
--- Ball Socket Centre tool - by Wenli
+-- Ball Socket Center tool - by Wenli
 
-local gsTool = "ballsocketcentre"
+local gsTool = "ballsocketcenter"
 
 TOOL.ClientConVar = {
   [ "forcelimit"  ] = 0,
@@ -35,7 +35,7 @@ if(CLIENT) then
 
   language.Add("tool."..gsTool..".category", "Constraints")
   language.Add("tool."..gsTool..".name","Ball Socket Center Adv")
-  language.Add("tool."..gsTool..".desc", "Ball socket props by centre of mass")
+  language.Add("tool."..gsTool..".desc", "Ball socket props by center of mass")
   language.Add("tool."..gsTool..".info.0", "Select first prop")
   language.Add("tool."..gsTool..".info.1", "Select second prop")
   language.Add("tool."..gsTool..".left", "Create ball socket between two props")
@@ -179,7 +179,7 @@ function TOOL:LeftClick(tr)
     end
 
     if(moveprop and not Ent1:IsWorld() and not Ent2:IsWorld()) then
-      -- Move the object so that centres of mass overlap
+      -- Move the object so that centers of mass overlap
       local D1 = Ent1:LocalToWorld(LPos1); D1:Sub(Ent1:GetPos())
       local D2 = Ent2:LocalToWorld(LPos2); D2:Sub(Ent2:GetPos())
       local TR = Ent2:GetPos(); TR:Add(D2); TR:Sub(D1)
@@ -209,7 +209,7 @@ function TOOL:LeftClick(tr)
 
       self:NotifyUser("Rotation constraint created!", "GENERIC", 7)
     else
-      undo.Create("Ballsocket Centre")
+      undo.Create("Ballsocket Center")
 
       if(simplemode) then
         local socket = constraint.Ballsocket(Ent2, Ent1, Bone2, Bone1, LPos1, forcelimit, torquelimit, nocollide)
@@ -278,7 +278,7 @@ function TOOL:RightClick(tr)
                 math.abs(dmax:Dot(tr.HitNormal))) / 2
 
   if(dist <= 0) then
-    self:NotifyUser("Constraint shaft invalid!", "ERROR", 7)
+    self:NotifyUser("Shaft length invalid!", "ERROR", 7)
     return false
   end
 
