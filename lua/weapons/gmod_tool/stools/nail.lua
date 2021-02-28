@@ -75,7 +75,7 @@ function TOOL:GetPikeIters()
   return math.Clamp(math.floor(self:GetClientNumber("pikeiters", 0)), 0, 500)
 end
 
-local function MakeNail(Ent1, Ent2, Bone1, Bone2, ForLi, Pos, Ang, NoCo, ReEn)
+local function MakeNail(Ent1, Ent2, Bone1, Bone2, Pos, Ang, ForLi, NoCo, ReEn)
 
   local cWeld = constraint.Weld(Ent1, Ent2, Bone1, Bone2, ForLi, NoCo, ReEn)
 
@@ -96,11 +96,15 @@ local function MakeNail(Ent1, Ent2, Bone1, Bone2, ForLi, Pos, Ang, NoCo, ReEn)
   eNail:Activate()
 
   cWeld:DeleteOnRemove(eNail)
+  Ent1:DeleteOnRemove(eNail)
+  Ent1:DeleteOnRemove(cWeld)
+  Ent2:DeleteOnRemove(eNail)
+  Ent2:DeleteOnRemove(cWeld)
 
   return cWeld, eNail
 end
 
-duplicator.RegisterConstraint("Nail", MakeNail, "Ent1", "Ent2", "Bone1", "Bone2", "ForLi", "Pos", "Ang")
+duplicator.RegisterConstraint("Nail", MakeNail, "Ent1", "Ent2", "Bone1", "Bone2", "Pos", "Ang", "ForLi", "NoCo", "ReEn")
 
 cleanup.Register(gsTool.."s")
 
@@ -113,7 +117,7 @@ function TOOL:Validate(tr)
   return true
 end
 
-function TOOL:Constraint(tTr, nCnt)
+function TOOL:Constraint(tTr, bOne)
   local user       = self:GetOwner()
   local uaimvec    = user:GetAimVector()
   local forcelimit = self:GetForceLimit()
@@ -121,9 +125,8 @@ function TOOL:Constraint(tTr, nCnt)
   local pikelength = self:GetPikeLength()
   local nocollide  = self:GetNoCollide()
   local remonbreak = self:GetRemOnBreak()
-  local pikecount  = math.max(tonumber(nCnt) or self:GetPikeCount(), 0)
-
-  print(pikecount, nCnt, self:GetPikeCount())
+  local pikecount  = self:GetPikeCount()
+  if(bOne) then pikecount = 1 end
 
   local trData, trNail = {}, {}
 
@@ -139,10 +142,10 @@ function TOOL:Constraint(tTr, nCnt)
 
   util.TraceLine(trData)
 
-  if(trNail and trNail.Hit and pikecount > 0 and pikeiters > 0) then
+  if(trNail and trNail.Hit and pikelength > 0 and pikeiters > 0) then
     undo.Create("Nail")
 
-    while(trNail and trNail.Hit and pikecount > 0 and pikeiters > 0) do
+    while(trNail and trNail.Hit and pikelength > 0 and pikeiters > 0) do
 
       if(not trNail) then break end
       if(not trNail.Hit) then break end
@@ -156,31 +159,32 @@ function TOOL:Constraint(tTr, nCnt)
         trData.filter.Size = trData.filter.Size + 1
         trData.filter[trData.filter.Size] = trNail.Entity
 
-        local vOrg = Vector(uaimvec); vOrg:Mul(-1); vOrg:Add(tTr.HitPos)
+        local vOrg = Vector(uaimvec); vOrg:Mul(-1); vOrg:Add(trData.start)
         local vDir = uaimvec:Angle(); vOrg:Set(tTr.Entity:WorldToLocal(vOrg))
 
         local cWeld, eNail = MakeNail(tTr.Entity, trNail.Entity,
                                       tTr.PhysicsBone, trNail.PhysicsBone,
-                                      forcelimit, vOrg, vDir, nocollide, remonbreak)
+                                      vOrg, vDir, forcelimit, nocollide, remonbreak)
 
         if(cWeld and cWeld:IsValid()) then
           undo.AddEntity(cWeld)
           undo.AddEntity(eNail)
           undo.SetPlayer(user)
 
-          user:AddCleanup("nails", cWeld)
-          user:AddCleanup("nails", eNail)
+          user:AddCleanup(gsTool.."s", cWeld)
+          user:AddCleanup(gsTool.."s", eNail)
+        end
+
+        if(pikecount > 0) then
+          pikecount = (pikecount - 1)
+          if(pikecount <= 0) then break end
         end
       end
 
       trData.start:Set(trNail.HitPos)
-
-      if(pikecount > 0) then
-        pikecount = (pikecount - 1)
-        if(pikecount <= 0) then break end
-      end
-
-      pikeiters = (pikeiters - 1)
+      pikelength = (trData.endpos - trData.start):Length()
+      pikeiters = (pikeiters - 1) -- Prevent infinite loops
+      util.TraceLine(trData) -- Ready to trace the next entity
     end
 
     if(trData.filter.Size > 3) then
@@ -199,13 +203,13 @@ end
 function TOOL:LeftClick(tr)
   if(CLIENT) then return true end
   if(not self:Validate(tr)) then return false end
-  return self:Constraint(tr, 1)
+  return self:Constraint(tr, true)
 end
 
 function TOOL:RightClick(tr)
   if(CLIENT) then return true end
   if(not self:Validate(tr)) then return false end
-  return self:Constraint(tr)
+  return self:Constraint(tr, false)
 end
 
 function TOOL:Reload(tr)

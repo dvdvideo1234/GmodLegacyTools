@@ -287,8 +287,6 @@ function TOOL:RightClick(tr)
 
   local tPike = self:GetPikeInfo(tr, norm)
 
-  print(tPike.Size)
-
   if(not tPike) then return false end
   if(not tPike.Size) then return false end
   if(not (tPike.Size > 0)) then return false end
