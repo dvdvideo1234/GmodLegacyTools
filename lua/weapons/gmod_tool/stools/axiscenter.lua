@@ -8,7 +8,7 @@ TOOL.ClientConVar = {
   [ "friction"    ] = 0,
   [ "nocollide"   ] = 0,
   [ "moveprop"    ] = 0,
-  [ "rotsecond"   ] = 0,
+  [ "rotsecond"   ] = 1,
   [ "pikecount"   ] = 1,
   [ "pikeiters"   ] = 100,
   [ "pikelength"  ] = 16
@@ -46,8 +46,8 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".pikecount", "Adjust the amount of piked props when creating axes")
   language.Add("tool."..gsTool..".nocollide_con", "No-Collide")
   language.Add("tool."..gsTool..".nocollide", "No-Collide the constrained props")
-  language.Add("tool."..gsTool..".rotsecond_con", "Second prop rotation")
-  language.Add("tool."..gsTool..".rotsecond", "Rotation direction by second prop")
+  language.Add("tool."..gsTool..".rotsecond_con", "Rotation by second")
+  language.Add("tool."..gsTool..".rotsecond", "Use the rotation direction obtained by the second prop")
   language.Add("tool."..gsTool..".moveprop_con", "Move first prop")
   language.Add("tool."..gsTool..".moveprop", "Move first prop remember to nocollide")
   language.Add("reload."..gsTool,"Undone Advanced Axis Center")
@@ -58,6 +58,14 @@ TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
+
+function TOOL:Validate(tr)
+  if(not tr) then return false end
+  if(not tr.Entity) then return false end
+  if(tr.Entity:IsPlayer()) then return false end
+  if(not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  return true
+end
 
 function TOOL:NotifyUser(sMsg, sNot, iSiz)
   local user = self:GetOwner()
@@ -102,8 +110,7 @@ function TOOL:GetPikeIters()
 end
 
 function TOOL:LeftClick(tr)
-  if(tr.Entity:IsPlayer()) then return false end
-  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  if(not self:Validate(tr)) then return false end
 
   local iNum = self:NumObjects()
   local Phys = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
@@ -184,8 +191,7 @@ function TOOL:Reload(tr)
     self:ClearObjects(); return true
   end
 
-  if( not tr.Entity:IsValid() or
-          tr.Entity:IsPlayer()) then return false end
+  if(not self:Validate(tr)) then return false end
 
   self:SetStage(0)
   return constraint.RemoveConstraints(tr.Entity, "Axis")
@@ -196,20 +202,13 @@ function TOOL:Holster(tr)
 end
 
 function TOOL:GetPikeAxis(tr, norm)
-  local tPike = {
-    Filt = 0, Limi = false,
-    Size = 2, Iter = 0,
-    Span = 0, Norm = Vector()
-  }
-
   local user       = self:GetOwner()
   local pikecount  = self:GetPikeCount()
+  local pikeiters  = self:GetPikeIters()
   local pikelength = self:GetPikeLength()
   if(pikelength <= 0) then return tPike end
 
-  tPike.Limi = (pikecount > 0)
-  tPike.Span = pikelength
-  tPike.Iter = self:GetPikeIters()
+  local tPike = {Size = 0, Norm = Vector()}
 
   if(norm) then
     tPike.Norm:Set(norm)
@@ -220,71 +219,63 @@ function TOOL:GetPikeAxis(tr, norm)
     tPike.Norm:Normalize()
   end
 
-  tResult = {}
-
-  local tTrace = {
+  local trAxis, trData = {}, {
     start  = Vector(), endpos = Vector(),
     filter = {}, mask  = MASK_SOLID,
     collisiongroup = COLLISION_GROUP_NONE,
-    ignoreworld = true, output = tResult
+    ignoreworld = true
   }
 
   -- Put the trace entity in the filter list
-  tTrace.filter[1] = user
-  tTrace.filter[2] = tr.Entity
-  tPike.Filt = #tTrace.filter
+  trData.output = trAxis
+  table.insert(trData.filter, user)
+  table.insert(trData.filter, tr.Entity)
 
   -- Initialize ray trace data
-  tTrace.start:Set(tr.HitPos)
-  tTrace.endpos:Set(tPike.Norm)
-  tTrace.endpos:Mul(tPike.Span)
-  tTrace.endpos:Add(tTrace.start)
+  trData.start:Set(tr.HitPos)
+  trData.endpos:Set(tPike.Norm)
+  trData.endpos:Mul(pikelength)
+  trData.endpos:Add(trData.start)
 
-  util.TraceLine(tTrace)
+  util.TraceLine(trData)
 
-  while(tResult.Hit and tPike.Span > 0 and tPike.Iter > 0) do
-    tPike.Iter = tPike.Iter - 1 -- Prevent infinite loops
-    tPike.Span = tPike.Span - (tResult.Fraction * tPike.Span)
+  while(trAxis.Hit and pikelength > 0 and pikeiters > 0) do
 
-    if(tResult.Entity and
-       tResult.Entity ~= tr.Entity and
-       tResult.Entity:IsValid() and not
-       tResult.Entity:IsPlayer() and
-       util.IsValidPhysicsObject(tResult.Entity, tResult.PhysicsBone))
+    if(trAxis.Entity and
+       trAxis.Entity ~= tr.Entity and
+       trAxis.Entity:IsValid() and not
+       trAxis.Entity:IsPlayer() and
+       util.IsValidPhysicsObject(trAxis.Entity, trAxis.PhysicsBone))
     then
       -- Apply the filter to make sure we dont hit already processed
-      tPike.Filt = tPike.Filt + 1
-      tTrace.filter[tPike.Filt] = tResult.Entity
+      table.insert(trData.filter, trAxis.Entity)
+
       -- Copy the trace data to the kebab table
       tPike.Size = tPike.Size + 1
       tPike[tPike.Size] = {}
-      tPike[tPike.Size].Ent = tResult.Entity
-      tPike[tPike.Size].Pos = Vector()
-      tPike[tPike.Size].Pos:Set(tResult.HitPos)
-      tPike[tPike.Size].Bone = tResult.PhysicsBone
-      tPike[tPike.Size].Norm = Vector()
-      tPike[tPike.Size].Norm:Set(tResult.HitNormal)
+      tPike[tPike.Size].Ent  = trAxis.Entity
+      tPike[tPike.Size].Bone = trAxis.PhysicsBone
+      tPike[tPike.Size].Pos  = Vector(trAxis.HitPos)
+      tPike[tPike.Size].Norm = Vector(trAxis.HitNormal)
 
-      if(tPike.Limi) then
+      if(pikecount > 0) then
         pikecount = pikecount - 1
         if(pikecount <= 0) then break end
       end
     end
 
-    tTrace.start:Set(tResult.HitPos)
-    tTrace.endpos:Set(tPike.Norm)
-    tTrace.endpos:Mul(tPike.Span)
-    tTrace.endpos:Add(tTrace.start)
-
-    util.TraceLine(tTrace)
+    trData.start:Set(trAxis.HitPos)
+    pikelength = (trData.endpos - trData.start):Length()
+    pikeiters = pikeiters - 1 -- Prevent infinite loops
+    util.TraceLine(trData) -- Ready to trace the next entity
   end
 
   return tPike
 end
 
 function TOOL:RightClick(tr)
-  if(tr.Entity:IsPlayer()) then return false end
-  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  if(CLIENT) then return true end
+  if(not self:Validate(tr)) then return false end
   if(self:NumObjects() > 0) then return false end
 
   local user, norm = self:GetOwner()

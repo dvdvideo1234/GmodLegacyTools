@@ -83,6 +83,14 @@ TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
 
+function TOOL:Validate(tr)
+  if(not tr) then return false end
+  if(not tr.Entity) then return false end
+  if(tr.Entity:IsPlayer()) then return false end
+  if(not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  return true
+end
+
 function TOOL:NotifyUser(sMsg, sNot, iSiz)
   local user = self:GetOwner()
   local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
@@ -136,8 +144,7 @@ function TOOL:GetTorqueLimit()
 end
 
 function TOOL:LeftClick(tr)
-  if(tr.Entity:IsPlayer()) then return false end
-  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  if(not self:Validate(tr)) then return false end
 
   local iNum = self:NumObjects()
   local oPhy = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
@@ -250,8 +257,7 @@ function TOOL:Reload(tr)
     self:ClearObjects(); return true
   end
 
-  if(not tr.Entity:IsValid() or
-         tr.Entity:IsPlayer()) then return false end
+  if(not self:Validate(tr)) then return false end
 
   self:SetStage(0)
   constraint.RemoveConstraints(tr.Entity, "Ballsocket")
@@ -264,8 +270,8 @@ function TOOL:Holster(tr)
 end
 
 function TOOL:RightClick(tr)
-  if(tr.Entity:IsPlayer()) then return false end
-  if(SERVER and not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  if(CLIENT) then return true end
+  if(not self:Validate(tr)) then return false end
 
   local phy = tr.Entity:GetPhysicsObject()
   local cen = tr.Entity:LocalToWorld(phy:GetMassCenter())
