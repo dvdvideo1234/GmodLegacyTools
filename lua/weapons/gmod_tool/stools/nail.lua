@@ -13,9 +13,9 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".category", "Constraints")
   language.Add("tool."..gsTool..".name", "Nail Constraint")
   language.Add("tool."..gsTool..".desc", "Welds two things together using a nail")
-  language.Add("tool."..gsTool..".left", "Nail two thing togrther")
-  language.Add("tool."..gsTool..".rigth", "Nail multiple things togrther")
-  language.Add("tool."..gsTool..".reload", "Remove the nail constraint")
+  language.Add("tool."..gsTool..".left", "Nails two thing togrther")
+  language.Add("tool."..gsTool..".right", "Nails multiple things togrther")
+  language.Add("tool."..gsTool..".reload", "Removes the nail constraint")
   language.Add("tool."..gsTool..".0", "Click on a thin prop or a ragdoll that has something close behind it")
   language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
@@ -38,10 +38,18 @@ TOOL.ClientConVar = {
   ["pikelength"] = 16
 }
 
+local gtConvar = TOOL:BuildConVarList()
+
 TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
 TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
+
+function TOOL:NotifyUser(sMsg, sNot, iSiz)
+  local user = self:GetOwner()
+  local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
+  user:SendLua(fmsg:format(sMsg, sNot, iSiz))
+end
 
 function TOOL:GetForceLimit()
   return math.Clamp(self:GetClientNumber("forcelimit", 0), 0, 50000)
@@ -115,6 +123,8 @@ function TOOL:Constraint(tTr, nCnt)
   local remonbreak = self:GetRemOnBreak()
   local pikecount  = math.max(tonumber(nCnt) or self:GetPikeCount(), 0)
 
+  print(pikecount, nCnt, self:GetPikeCount())
+
   local trData, trNail = {}, {}
 
   trData.start  = Vector(tTr.HitPos)
@@ -122,27 +132,31 @@ function TOOL:Constraint(tTr, nCnt)
   trData.endpos:Mul(pikelength)
   trData.endpos:Add(trData.start)
   trData.filter = {user, tTr.Entity, Size = 2}
+  trData.mask   = MASK_SOLID
+  trData.ignoreworld = false
+  trData.collisiongroup = COLLISION_GROUP_NONE
   trData.output = trNail
 
   util.TraceLine(trData)
 
-  if(trNail and trNail.Hit and pikecount > 0) then
+  if(trNail and trNail.Hit and pikecount > 0 and pikeiters > 0) then
     undo.Create("Nail")
 
-    while(trNail and trNail.Hit and pikecount > 0) do
+    while(trNail and trNail.Hit and pikecount > 0 and pikeiters > 0) do
 
       if(not trNail) then break end
       if(not trNail.Hit) then break end
 
       if(trNail.Entity and
-         trNail.Entity:IsValid() and not
-         trNail.Entity:IsPlayer()) then
+         trNail.Entity ~= tTr.Entity and not trNail.Entity:IsPlayer() and
+         util.IsValidPhysicsObject(trNail.Entity, trNail.PhysicsBone)) then
 
         -- Add the entity to the filter
+        if(trNail.HitWorld) then trData.ignoreworld = true end
         trData.filter.Size = trData.filter.Size + 1
         trData.filter[trData.filter.Size] = trNail.Entity
 
-        local vOrg = Vector(uaimvec); vOrg:Mul(8); vOrg:Add(tTr.HitPos)
+        local vOrg = Vector(uaimvec); vOrg:Mul(-1); vOrg:Add(tTr.HitPos)
         local vDir = uaimvec:Angle(); vOrg:Set(tTr.Entity:WorldToLocal(vOrg))
 
         local cWeld, eNail = MakeNail(tTr.Entity, trNail.Entity,
@@ -160,7 +174,19 @@ function TOOL:Constraint(tTr, nCnt)
       end
 
       trData.start:Set(trNail.HitPos)
-      pikecount = (pikecount - 1)
+
+      if(pikecount > 0) then
+        pikecount = (pikecount - 1)
+        if(pikecount <= 0) then break end
+      end
+
+      pikeiters = (pikeiters - 1)
+    end
+
+    if(trData.filter.Size > 3) then
+      self:NotifyUser("Nail created "..(trData.filter.Size - 2).."!", "GENERIC", 7)
+    else
+      self:NotifyUser("Nail created !", "GENERIC", 7)
     end
   else
     return false

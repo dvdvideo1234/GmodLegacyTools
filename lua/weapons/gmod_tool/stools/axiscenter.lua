@@ -110,18 +110,23 @@ function TOOL:GetPikeIters()
 end
 
 function TOOL:LeftClick(tr)
+  if(CLIENT) then return true end
   if(not self:Validate(tr)) then return false end
 
   local iNum = self:NumObjects()
   local Phys = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
   self:SetObject(iNum + 1, tr.Entity, tr.HitPos, Phys, tr.PhysicsBone, tr.HitNormal)
 
-  if(iNum > 0)then
-    if(CLIENT) then
+  -- Can't select world as first object
+  if(iNum == 0) then
+    if(tr.Entity:IsWorld()) then
       self:ClearObjects()
-      return true
+      self:NotifyUser("Hit prop first!", "ERROR", 7)
+      return false
     end
+  end
 
+  if(iNum > 0)then
     local user        = self:GetOwner()
     local friction    = self:GetFriction()
     local moveprop    = self:GetMoveprop()
@@ -201,7 +206,7 @@ function TOOL:Holster(tr)
   self:ClearObjects()
 end
 
-function TOOL:GetPikeAxis(tr, norm)
+function TOOL:GetPikeInfo(tr, norm)
   local user       = self:GetOwner()
   local pikecount  = self:GetPikeCount()
   local pikeiters  = self:GetPikeIters()
@@ -219,36 +224,32 @@ function TOOL:GetPikeAxis(tr, norm)
     tPike.Norm:Normalize()
   end
 
-  local trAxis, trData = {}, {
-    start  = Vector(), endpos = Vector(),
-    filter = {}, mask  = MASK_SOLID,
-    collisiongroup = COLLISION_GROUP_NONE,
-    ignoreworld = true
-  }
-
-  -- Put the trace entity in the filter list
-  trData.output = trAxis
-  table.insert(trData.filter, user)
-  table.insert(trData.filter, tr.Entity)
+  local trAxis, trData = {}, {}
 
   -- Initialize ray trace data
-  trData.start:Set(tr.HitPos)
-  trData.endpos:Set(tPike.Norm)
+  trData.start = Vector(tr.HitPos)
+  trData.endpos = Vector(tPike.Norm)
   trData.endpos:Mul(pikelength)
   trData.endpos:Add(trData.start)
+  trData.filter = {user, tr.Entity}
+  trData.filter.Size = #trData.filter
+  trData.ignoreworld = false
+  trData.output = trAxis
+  trData.mask   = MASK_SOLID
+  trData.collisiongroup = COLLISION_GROUP_NONE
 
   util.TraceLine(trData)
 
-  while(trAxis.Hit and pikelength > 0 and pikeiters > 0) do
+  while(trAxis and trAxis.Hit and pikelength > 0 and pikeiters > 0) do
 
     if(trAxis.Entity and
-       trAxis.Entity ~= tr.Entity and
-       trAxis.Entity:IsValid() and not
-       trAxis.Entity:IsPlayer() and
+       trAxis.Entity ~= tr.Entity and not trAxis.Entity:IsPlayer() and
        util.IsValidPhysicsObject(trAxis.Entity, trAxis.PhysicsBone))
     then
       -- Apply the filter to make sure we dont hit already processed
-      table.insert(trData.filter, trAxis.Entity)
+      if(trAxis.HitWorld) then trData.ignoreworld = true end
+      trData.filter.Size = trData.filter.Size + 1
+      trData.filter[trData.filter.Size] = trAxis.Entity
 
       -- Copy the trace data to the kebab table
       tPike.Size = tPike.Size + 1
@@ -266,7 +267,7 @@ function TOOL:GetPikeAxis(tr, norm)
 
     trData.start:Set(trAxis.HitPos)
     pikelength = (trData.endpos - trData.start):Length()
-    pikeiters = pikeiters - 1 -- Prevent infinite loops
+    pikeiters = (pikeiters - 1) -- Prevent infinite loops
     util.TraceLine(trData) -- Ready to trace the next entity
   end
 
@@ -284,7 +285,9 @@ function TOOL:RightClick(tr)
     norm = user:GetAimVector()
   end
 
-  local tPike = self:GetPikeAxis(tr, norm)
+  local tPike = self:GetPikeInfo(tr, norm)
+
+  print(tPike.Size)
 
   if(not tPike) then return false end
   if(not tPike.Size) then return false end

@@ -144,6 +144,7 @@ function TOOL:GetTorqueLimit()
 end
 
 function TOOL:LeftClick(tr)
+  if(CLIENT) then return true end
   if(not self:Validate(tr)) then return false end
 
   local iNum = self:NumObjects()
@@ -152,18 +153,14 @@ function TOOL:LeftClick(tr)
 
   -- Can't select world as first object
   if(iNum == 0) then
-    if tr.Entity:IsWorld() then
+    if(tr.Entity:IsWorld()) then
       self:ClearObjects()
+      self:NotifyUser("Hit prop first!", "ERROR", 7)
       return false
     end
   end
 
   if(iNum > 0) then
-    if(CLIENT) then
-      self:ClearObjects()
-      return true
-    end
-
     local user        = self:GetOwner()
     local freemove    = self:GetFreeMove()
     local moveprop    = self:GetMoveProp()
@@ -272,12 +269,12 @@ end
 function TOOL:RightClick(tr)
   if(CLIENT) then return true end
   if(not self:Validate(tr)) then return false end
+  if(self:NumObjects() > 0) then return false end
 
   local phy = tr.Entity:GetPhysicsObject()
   local cen = tr.Entity:LocalToWorld(phy:GetMassCenter())
   local min = tr.Entity:LocalToWorld(tr.Entity:OBBMins())
   local max = tr.Entity:LocalToWorld(tr.Entity:OBBMaxs())
-
   local dmin = Vector(min); dmin:Sub(cen)
   local dmax = Vector(max); dmax:Sub(cen)
   local dist = (math.abs(dmin:Dot(tr.HitNormal)) +
@@ -322,10 +319,12 @@ function TOOL:RightClick(tr)
 
     undo.SetPlayer(user); undo.Finish()
 
-    self:NotifyUser("Constraint shaft ["..math.Round(dist, 2).."]!", "GENERIC", 7)
+    self:NotifyUser("Shaft created "..math.Round(dist, 2).."!", "GENERIC", 7)
+
+    return true
   end
 
-  return true
+  return false
 end
 
 -- Enter `spawnmenu_reload` in the console to reload the panel
