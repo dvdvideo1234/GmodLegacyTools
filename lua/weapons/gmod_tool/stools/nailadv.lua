@@ -1,5 +1,4 @@
-
-local gsTool = "nail"
+local gsTool = TOOL.Mode
 
 if(CLIENT) then
 
@@ -11,7 +10,7 @@ if(CLIENT) then
   }
 
   language.Add("tool."..gsTool..".category", "Constraints")
-  language.Add("tool."..gsTool..".name", "Nail Constraint")
+  language.Add("tool."..gsTool..".name", "Nail Adv")
   language.Add("tool."..gsTool..".desc", "Welds two things together using a nail")
   language.Add("tool."..gsTool..".left", "Nails two thing togrther")
   language.Add("tool."..gsTool..".right", "Nails multiple things togrther")

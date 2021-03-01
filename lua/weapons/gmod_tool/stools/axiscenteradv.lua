@@ -1,6 +1,4 @@
--- Axis Center tool - by Wenli
-
-local gsTool = "axiscenter"
+local gsTool = TOOL.Mode
 
 TOOL.ClientConVar = {
   [ "forcelimit"  ] = 0,
@@ -144,7 +142,7 @@ function TOOL:LeftClick(tr)
 
     if Ent1 == Ent2 then
       self:ClearObjects()
-      self:NotifyUser("Selected the same prop!", "ERROR", 7)
+      self:NotifyUser("Using same prop!", "ERROR", 7)
       return true
     end
 
@@ -176,7 +174,7 @@ function TOOL:LeftClick(tr)
     undo.Finish()
 
     user:AddCleanup("constraints", axis)
-    self:NotifyUser("Axis Center created!", "GENERIC", 7)
+    self:NotifyUser("Axis center created!", "GENERIC", 7)
 
     Phys1:EnableMotion(false)
 
@@ -322,7 +320,7 @@ function TOOL:RightClick(tr)
   end
 
   undo.Finish()
-  self:NotifyUser("Axis Pike created "..tPike.Size.."!", "GENERIC", 7)
+  self:NotifyUser("Axis pike created"..tPike.Size.."!", "GENERIC", 7)
 
   return true
 end

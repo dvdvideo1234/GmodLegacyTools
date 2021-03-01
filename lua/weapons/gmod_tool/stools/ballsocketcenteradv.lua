@@ -1,6 +1,4 @@
--- Ball Socket Center tool - by Wenli
-
-local gsTool = "ballsocketcenter"
+local gsTool = TOOL.Mode
 
 TOOL.ClientConVar = {
   [ "forcelimit"  ] = 0,
@@ -10,15 +8,15 @@ TOOL.ClientConVar = {
   [ "simplemode"  ] = 0,
   [ "freemove"    ] = 0,
   [ "rotateonly"  ] = 0,
-  [ "cxrotfric"   ] = 0,
-  [ "cyrotfric"   ] = 0,
-  [ "czrotfric"   ] = 0,
-  [ "cxrotmin"    ] = -180,
-  [ "cyrotmin"    ] = -180,
-  [ "czrotmin"    ] = -180,
-  [ "cxrotmax"    ] =  180,
-  [ "cyrotmax"    ] =  180,
-  [ "czrotmax"    ] =  180
+  [ "xrotfric"    ] = 0,
+  [ "yrotfric"    ] = 0,
+  [ "zrotfric"    ] = 0,
+  [ "xrotmin"     ] = -180,
+  [ "yrotmin"     ] = -180,
+  [ "zrotmin"     ] = -180,
+  [ "xrotmax"     ] =  180,
+  [ "yrotmax"     ] =  180,
+  [ "zrotmax"     ] =  180
 }
 
 local gtConvar = TOOL:BuildConVarList()
@@ -56,24 +54,24 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".rotateonly_con", "Rotation constraint")
   language.Add("tool."..gsTool..".rotateonly_dsc", "Note: The Rotation Constraint creates 3 separate X/Y/Z ball sockets to match rotation between the two constrained entities. Selecting this option overrides all other settings besides nocollide and force limit.")
   language.Add("tool."..gsTool..".rotateonly", "Creates 3 separate X/Y/Z ballsockets to match rotation between the two constrained entities")
-  language.Add("tool."..gsTool..".cxrotmin_con", "X Rotation min:")
-  language.Add("tool."..gsTool..".cxrotmin", "Rotation minimum of advanced ballsocket in X axis")
-  language.Add("tool."..gsTool..".cxrotmax_con", "X Rotation max:")
-  language.Add("tool."..gsTool..".cxrotmax", "Rotation maximum of advanced ballsocket in X axis")
-  language.Add("tool."..gsTool..".cyrotmin_con", "Y Rotation min:")
-  language.Add("tool."..gsTool..".cyrotmin", "Rotation minimum of advanced ballsocket in Y axis")
-  language.Add("tool."..gsTool..".cyrotmax_con", "Y Rotation max:")
-  language.Add("tool."..gsTool..".cyrotmax", "Rotation maximum of advanced ballsocket in Y axis")
-  language.Add("tool."..gsTool..".czrotmin_con", "Z Rotation min:")
-  language.Add("tool."..gsTool..".czrotmin", "Rotation minimum of advanced ballsocket in Z axis")
-  language.Add("tool."..gsTool..".czrotmax_con", "Z Rotation max:")
-  language.Add("tool."..gsTool..".czrotmax", "Rotation maximum of advanced ballsocket in Z axis")
-  language.Add("tool."..gsTool..".cxrotfric_con", "X Friction:")
-  language.Add("tool."..gsTool..".cxrotfric", "Rotation friction of advanced ballsocket in X axis")
-  language.Add("tool."..gsTool..".cyrotfric_con", "Y Friction:")
-  language.Add("tool."..gsTool..".cyrotfric", "Rotation friction of advanced ballsocket in Y axis")
-  language.Add("tool."..gsTool..".czrotfric_con", "Z Friction:")
-  language.Add("tool."..gsTool..".czrotfric", "Rotation friction of advanced ballsocket in Z axis")
+  language.Add("tool."..gsTool..".xrotmin_con", "X Rotation min:")
+  language.Add("tool."..gsTool..".xrotmin", "Rotation minimum of advanced ballsocket in X axis")
+  language.Add("tool."..gsTool..".xrotmax_con", "X Rotation max:")
+  language.Add("tool."..gsTool..".xrotmax", "Rotation maximum of advanced ballsocket in X axis")
+  language.Add("tool."..gsTool..".yrotmin_con", "Y Rotation min:")
+  language.Add("tool."..gsTool..".yrotmin", "Rotation minimum of advanced ballsocket in Y axis")
+  language.Add("tool."..gsTool..".yrotmax_con", "Y Rotation max:")
+  language.Add("tool."..gsTool..".yrotmax", "Rotation maximum of advanced ballsocket in Y axis")
+  language.Add("tool."..gsTool..".zrotmin_con", "Z Rotation min:")
+  language.Add("tool."..gsTool..".zrotmin", "Rotation minimum of advanced ballsocket in Z axis")
+  language.Add("tool."..gsTool..".zrotmax_con", "Z Rotation max:")
+  language.Add("tool."..gsTool..".zrotmax", "Rotation maximum of advanced ballsocket in Z axis")
+  language.Add("tool."..gsTool..".xrotfric_con", "X Friction:")
+  language.Add("tool."..gsTool..".xrotfric", "Rotation friction of advanced ballsocket in X axis")
+  language.Add("tool."..gsTool..".yrotfric_con", "Y Friction:")
+  language.Add("tool."..gsTool..".yrotfric", "Rotation friction of advanced ballsocket in Y axis")
+  language.Add("tool."..gsTool..".zrotfric_con", "Z Friction:")
+  language.Add("tool."..gsTool..".zrotfric", "Rotation friction of advanced ballsocket in Z axis")
   language.Add("reload."..gsTool,"Undone Advanced Ballsocket Center")
   language.Add("undone."..gsTool,"Undone Advanced Ballsocket Center")
 end
@@ -98,21 +96,21 @@ function TOOL:NotifyUser(sMsg, sNot, iSiz)
 end
 
 function TOOL:GetRotationFriction()
-  return math.Clamp(self:GetClientNumber("cxrotfric", 0), 0, 100),
-         math.Clamp(self:GetClientNumber("cyrotfric", 0), 0, 100),
-         math.Clamp(self:GetClientNumber("czrotfric", 0), 0, 100)
+  return math.Clamp(self:GetClientNumber("xrotfric", 0), 0, 100),
+         math.Clamp(self:GetClientNumber("yrotfric", 0), 0, 100),
+         math.Clamp(self:GetClientNumber("zrotfric", 0), 0, 100)
 end
 
 function TOOL:GetRotationMax()
-  return math.Clamp(self:GetClientNumber("cxrotmax", 0), -180, 180),
-         math.Clamp(self:GetClientNumber("cyrotmax", 0), -180, 180),
-         math.Clamp(self:GetClientNumber("czrotmax", 0), -180, 180)
+  return math.Clamp(self:GetClientNumber("xrotmax", 0), -180, 180),
+         math.Clamp(self:GetClientNumber("yrotmax", 0), -180, 180),
+         math.Clamp(self:GetClientNumber("zrotmax", 0), -180, 180)
 end
 
 function TOOL:GetRotationMin()
-  return math.Clamp(self:GetClientNumber("cxrotmin", 0), -180, 180),
-         math.Clamp(self:GetClientNumber("cyrotmin", 0), -180, 180),
-         math.Clamp(self:GetClientNumber("czrotmin", 0), -180, 180)
+  return math.Clamp(self:GetClientNumber("xrotmin", 0), -180, 180),
+         math.Clamp(self:GetClientNumber("yrotmin", 0), -180, 180),
+         math.Clamp(self:GetClientNumber("zrotmin", 0), -180, 180)
 end
 
 function TOOL:GetNoCollide()
@@ -178,7 +176,7 @@ function TOOL:LeftClick(tr)
 
     if(Ent1 == Ent2) then
       self:ClearObjects()
-      self:NotifyUser("Selected the same prop!", "ERROR", 7)
+      self:NotifyUser("Using same prop!", "ERROR", 7)
       return true
     end
 
@@ -220,12 +218,12 @@ function TOOL:LeftClick(tr)
         undo.AddEntity(socket)
         user:AddCleanup("constraints", socket)
       else
-        local cxrotmin , cyrotmin , czrotmin  = self:GetRotationMin()
-        local cxrotmax , cyrotmax , czrotmax  = self:GetRotationMax()
-        local cxrotfric, cyrotfric, czrotfric = self:GetRotationFriction()
+        local xrotmin , yrotmin , zrotmin  = self:GetRotationMin()
+        local xrotmax , yrotmax , zrotmax  = self:GetRotationMax()
+        local xrotfric, yrotfric, zrotfric = self:GetRotationFriction()
 
         local socket = constraint.AdvBallsocket(Ent1, Ent2, Bone1, Bone2, LPos1, LPos2, forcelimit, torquelimit,
-          cxrotmin, cyrotmin, czrotmin, cxrotmax, cyrotmax, czrotmax, cxrotfric, cyrotfric, czrotfric, freemove, nocollide)
+          xrotmin, yrotmin, zrotmin, xrotmax, yrotmax, zrotmax, xrotfric, yrotfric, zrotfric, freemove, nocollide)
 
         undo.AddEntity(socket)
         user:AddCleanup("constraints", socket)
@@ -347,33 +345,33 @@ function TOOL.BuildCPanel(CPanel) local pItem
   pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".torquelimit_con"), gsTool.."_torquelimit", 0, 50000, 3)
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".torquelimit"))
           pItem:SetDefaultValue(gtConvar[gsTool.."_torquelimit"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cxrotmin_con"), gsTool.."_cxrotmin", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cxrotmin"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cxrotmin"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cxrotmax_con"), gsTool.."_cxrotmax", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cxrotmax"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cxrotmax"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cyrotmin_con"), gsTool.."_cyrotmin", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cyrotmin"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cyrotmin"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cyrotmax_con"), gsTool.."_cyrotmax", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cyrotmax"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cyrotmax"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".czrotmin_con"), gsTool.."_czrotmin", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".czrotmin"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_czrotmin"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".czrotmax_con"), gsTool.."_czrotmax", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".czrotmax"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_czrotmax"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cxrotfric_con"), gsTool.."_cxrotfric", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cxrotfric"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cxrotfric"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".cyrotfric_con"), gsTool.."_cyrotfric", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".cyrotfric"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_cyrotfric"])
-  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".czrotfric_con"), gsTool.."_czrotfric", -180, 180, 3)
-          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".czrotfric"))
-          pItem:SetDefaultValue(gtConvar[gsTool.."_czrotfric"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".xrotmin_con"), gsTool.."_xrotmin", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".xrotmin"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_xrotmin"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".xrotmax_con"), gsTool.."_xrotmax", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".xrotmax"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_xrotmax"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".yrotmin_con"), gsTool.."_yrotmin", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".yrotmin"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_yrotmin"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".yrotmax_con"), gsTool.."_yrotmax", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".yrotmax"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_yrotmax"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".zrotmin_con"), gsTool.."_zrotmin", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".zrotmin"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_zrotmin"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".zrotmax_con"), gsTool.."_zrotmax", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".zrotmax"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_zrotmax"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".xrotfric_con"), gsTool.."_xrotfric", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".xrotfric"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_xrotfric"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".yrotfric_con"), gsTool.."_yrotfric", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".yrotfric"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_yrotfric"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".zrotfric_con"), gsTool.."_zrotfric", -180, 180, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".zrotfric"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_zrotfric"])
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".nocollide_con"), gsTool.."_nocollide")
           pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".nocollide"))
   pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".freemove_con"), gsTool.."_freemove")

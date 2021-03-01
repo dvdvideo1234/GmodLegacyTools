@@ -1,9 +1,9 @@
-local gsTool = "pulley"
+local gsTool = TOOL.Mode
 
 TOOL.ClientConVar = {
-  [ "width"      ] = 3,
+  [ "width"      ] = 2,
   [ "forcelimit" ] = 0,
-  [ "rigid"      ] = 0,
+  [ "rigid"      ] = 1,
   [ "material"   ] = "cable/cable"
 }
 
@@ -12,22 +12,43 @@ local gtConvar = TOOL:BuildConVarList()
 if(CLIENT) then
 
   TOOL.Information = {
-    { name = "info" , stage = 0, icon = "gui/info"},
-    { name = "left" , stage = 0, icon = "gui/lmb.png"},
-    { name = "right", stage = 0, icon = "gui/rmb.png"},
-    { name = "reload"}
+    { name = "info.0" , stage = 0, icon = "gui/info"},
+    { name = "info.1" , stage = 1, icon = "gui/info"},
+    { name = "info.2" , stage = 2, icon = "gui/info"},
+    { name = "info.3" , stage = 3, icon = "gui/info"},
+    { name = "left.0" , stage = 0, icon = "gui/lmb.png"},
+    { name = "left.1" , stage = 1, icon = "gui/lmb.png"},
+    { name = "left.2" , stage = 2, icon = "gui/lmb.png"},
+    { name = "left.3" , stage = 3, icon = "gui/lmb.png"},
+    { name = "right.0", stage = 0, icon = "gui/rmb.png"},
+    { name = "right.1", stage = 1, icon = "gui/rmb.png"},
+    { name = "right.2", stage = 2, icon = "gui/rmb.png"},
+    { name = "right.3", stage = 3, icon = "gui/rmb.png"},
+    { name = "reload.0" , stage = 0 },
+    { name = "reload.1" , stage = 1 },
+    { name = "reload.2" , stage = 2 },
+    { name = "reload.3" , stage = 3 },
   }
 
   language.Add("tool."..gsTool..".category", "Constraints")
   language.Add("tool."..gsTool..".name","Pulley Adv")
   language.Add("tool."..gsTool..".desc", "Creates a pulley between two props across two anchor points")
-  language.Add("tool."..gsTool..".0", "Select first physics prop")
-  language.Add("tool."..gsTool..".1", "Select prop or world to create first anchor point")
-  language.Add("tool."..gsTool..".2", "Select prop or world to create second anchor point")
-  language.Add("tool."..gsTool..".3", "Select second physics prop")
-  language.Add("tool."..gsTool..".left", "Create pulley between two props")
-  language.Add("tool."..gsTool..".right", "What does this have to do? Seriously")
-  language.Add("tool."..gsTool..".reload", "Removes pulley constraints from the trace entity")
+  language.Add("tool."..gsTool..".info.0", "Select first physics prop")
+  language.Add("tool."..gsTool..".info.1", "Select prop or world to create first anchor point")
+  language.Add("tool."..gsTool..".info.2", "Select prop or world to create second anchor point")
+  language.Add("tool."..gsTool..".info.3", "Select second physics prop")
+  language.Add("tool."..gsTool..".left.0", "Attach contraint to the first prop")
+  language.Add("tool."..gsTool..".left.1", "Attach contraint to the first anchor point")
+  language.Add("tool."..gsTool..".left.2", "Attach contraint to the second anchor point")
+  language.Add("tool."..gsTool..".left.3", "Attach contraint to the second prop")
+  language.Add("tool."..gsTool..".right.0", "Occupies the anchor points required with the same trace")
+  language.Add("tool."..gsTool..".right.1", "Occupy two anchor point slots with the same trace")
+  language.Add("tool."..gsTool..".right.2", "Occupy one anchor point slot with the same trace")
+  language.Add("tool."..gsTool..".right.3", "Occupies the anchor points required with the same trace")
+  language.Add("tool."..gsTool..".reload.0", "Removes pulley constraints or resets stored state")
+  language.Add("tool."..gsTool..".reload.1", "Removes pulley constraints or resets stored state")
+  language.Add("tool."..gsTool..".reload.2", "Removes pulley constraints or resets stored state")
+  language.Add("tool."..gsTool..".reload.3", "Removes pulley constraints or resets stored state")
   language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
   language.Add("tool."..gsTool..".width_con", "Width:")
@@ -112,6 +133,29 @@ function TOOL:LeftClick(tr)
     self:NotifyUser("Pulley created!", "GENERIC", 7)
   else
     self:SetStage(iNum + 1)
+  end
+
+  return true
+end
+
+function TOOL:RightClick(tr)
+  if(CLIENT) then return true end
+  if(not self:Validate(tr)) then return false end
+
+  local iNum = self:NumObjects()
+
+  if(iNum == 1) then
+    local trPhy = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
+    self:SetObject(iNum + 1, tr.Entity, tr.HitPos, trPhy, tr.PhysicsBone, tr.HitNormal)
+    self:SetObject(iNum + 2, tr.Entity, tr.HitPos, trPhy, tr.PhysicsBone, tr.HitNormal)
+    self:NotifyUser("Occupy two anchors!", "UNDO", 7)
+  elseif(iNum == 2) then
+    local trPhy = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
+    self:SetObject(iNum + 1, tr.Entity, tr.HitPos, trPhy, tr.PhysicsBone, tr.HitNormal)
+    self:NotifyUser("Occupy anchor!", "UNDO", 7)
+  else
+    self:NotifyUser("Nothong to occupy!", "ERROR", 7)
+    return false
   end
 
   return true
