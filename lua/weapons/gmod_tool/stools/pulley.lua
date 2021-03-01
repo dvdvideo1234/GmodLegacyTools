@@ -1,37 +1,93 @@
+local gsTool = "pulley"
 
-TOOL.Category   = "Constraints"
-TOOL.Name       = "#tool.pulley.name"
+TOOL.ClientConVar = {
+  [ "width"      ] = 3,
+  [ "forcelimit" ] = 0,
+  [ "rigid"      ] = 0,
+  [ "material"   ] = "cable/cable"
+}
+
+local gtConvar = TOOL:BuildConVarList()
+
+if(CLIENT) then
+
+  TOOL.Information = {
+    { name = "info" , stage = 0, icon = "gui/info"},
+    { name = "left" , stage = 0, icon = "gui/lmb.png"},
+    { name = "right", stage = 0, icon = "gui/rmb.png"},
+    { name = "reload"}
+  }
+
+  language.Add("tool."..gsTool..".category", "Constraints")
+  language.Add("tool."..gsTool..".name","Pulley Adv")
+  language.Add("tool."..gsTool..".desc", "Creates a pulley between two props across two anchor points")
+  language.Add("tool."..gsTool..".0", "Select first physics prop")
+  language.Add("tool."..gsTool..".1", "Select prop or world to create first anchor point")
+  language.Add("tool."..gsTool..".2", "Select prop or world to create second anchor point")
+  language.Add("tool."..gsTool..".3", "Select second physics prop")
+  language.Add("tool."..gsTool..".left", "Create pulley between two props")
+  language.Add("tool."..gsTool..".right", "What does this have to do? Seriously")
+  language.Add("tool."..gsTool..".reload", "Removes pulley constraints from the trace entity")
+  language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
+  language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
+  language.Add("tool."..gsTool..".width_con", "Width:")
+  language.Add("tool."..gsTool..".width", "Define how wide visually is the rope of the constraint")
+  language.Add("tool."..gsTool..".rigid_con", "Rigid:")
+  language.Add("tool."..gsTool..".rigid", "Configures the constraint as rigid bein able to push stuff")
+  language.Add("tool."..gsTool..".material_con", "Material:")
+  language.Add("tool."..gsTool..".material", "Use this to switch around the rope material for the constraint")
+end
+
+TOOL.Category   = language and language.GetPhrase("tool."..gsTool..".category")
+TOOL.Name       = language and language.GetPhrase("tool."..gsTool..".name")
 TOOL.Command    = nil
 TOOL.ConfigName = nil
 
+function TOOL:Validate(tr)
+  if(not tr) then return false end
+  if(not tr.Entity) then return false end
+  if(tr.Entity:IsPlayer()) then return false end
+  if(not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+  return true
+end
 
-TOOL.ClientConVar[ "width" ] = "3"
-TOOL.ClientConVar[ "forcelimit" ] = "0"
-TOOL.ClientConVar[ "rigid" ] = "0"
-TOOL.ClientConVar[ "material" ] = "cable/cable"
+function TOOL:NotifyUser(sMsg, sNot, iSiz)
+  local user = self:GetOwner()
+  local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
+  user:SendLua(fmsg:format(sMsg, sNot, iSiz))
+end
 
-function TOOL:LeftClick( trace )
+function TOOL:GetWidth()
+  return math.Clamp(math.max(self:GetClientNumber("width", 0), 0), 0, 10)
+end
 
-  -- If there's no physics object then we can't constraint it!
-  if ( SERVER && !util.IsValidPhysicsObject( trace.Entity, trace.PhysicsBone ) ) then return false end
+function TOOL:GetForceLimit()
+  return math.Clamp(self:GetClientNumber("forcelimit", 0), 0, 50000)
+end
 
+function TOOL:GetRigid()
+  return (self:GetClientNumber("rigid", 0) ~= 0)
+end
+
+function TOOL:GetMaterial()
+  return self:GetClientInfo("material", "")
+end
+
+function TOOL:LeftClick(tr)
+  if(CLIENT) then return true end
+  if(not self:Validate(tr)) then return false end
+
+  local user = self:GetOwner()
   local iNum = self:NumObjects()
+  local trPhy = tr.Entity:GetPhysicsObjectNum(tr.PhysicsBone)
+  self:SetObject(iNum + 1, tr.Entity, tr.HitPos, trPhy, tr.PhysicsBone, tr.HitNormal)
 
-  if ( trace.Entity:IsValid() && trace.Entity:IsPlayer() ) then return end
-  if ( !trace.Entity:IsValid() && ( iNum == nil || iNum == 0 || iNum > 2 ) ) then return end
+  if(iNum > 2) then
+    local width      = self:GetWidth()
+    local rigid      = self:GetRigid()
+    local material   = self:GetMaterial()
+    local forcelimit = self:GetForceLimit()
 
-  local Phys = trace.Entity:GetPhysicsObjectNum( trace.PhysicsBone )
-  self:SetObject( iNum + 1, trace.Entity, trace.HitPos, Phys, trace.PhysicsBone, trace.HitNormal )
-
-  if ( iNum > 2 ) then
-  
-    if ( CLIENT ) then return true end
-    
-    local width      = self:GetClientNumber( "width" )
-    local forcelimit  = self:GetClientNumber( "forcelimit" )
-    local rigid      = util.tobool( self:GetClientNumber( "rigid" ) )
-    local material    = self:GetClientInfo( "material" )
-    
     -- Get information we're about to use
     local Ent1 = self:GetEnt(1)
     local Ent4 = self:GetEnt(4)
@@ -42,61 +98,66 @@ function TOOL:LeftClick( trace )
     local WPos2 = self:GetPos(2)
     local WPos3 = self:GetPos(3)
 
-    local constraint = constraint.Pulley( Ent1, Ent4, Bone1, Bone4, LPos1, LPos4, WPos2, WPos3, forcelimit, rigid, width, material )
+    local ePull = constraint.Pulley(Ent1, Ent4, Bone1, Bone4,
+        LPos1, LPos4, WPos2, WPos3, forcelimit, rigid, width, material)
 
     undo.Create("Pulley")
-    undo.AddEntity( constraint )
-    undo.SetPlayer( self:GetOwner() )
+    undo.AddEntity(ePull)
+    undo.SetPlayer(user)
     undo.Finish()
-    
-    self:GetOwner():AddCleanup( "ropeconstraints", constraint )
+
+    user:AddCleanup("ropeconstraints", ePull)
 
     self:ClearObjects()
-
-  elseif ( iNum == 2 ) then
-
-    self:SetStage( iNum+1 )
-    
-  elseif ( iNum == 1 ) then
-
-    self:SetStage( iNum+1 )
-    
+    self:NotifyUser("Pulley created!", "GENERIC", 7)
   else
-
-    self:SetStage( iNum+1 )
-    
+    self:SetStage(iNum + 1)
   end
-  
+
   return true
-
 end
 
-function TOOL:Reload( trace )
+function TOOL:Reload(tr)
+  if(CLIENT) then return true end
 
-  if (!trace.Entity:IsValid() || trace.Entity:IsPlayer() ) then return false end
-  if ( CLIENT ) then return true end
-  
-  return constraint.RemoveConstraints( trace.Entity, "Pulley" )
- 
+  if(tr.HitWorld) then
+    self:NotifyUser("Stage cleared!", "CLEANUP", 7)
+    self:ClearObjects(); return true
+  end
+
+  if(not self:Validate(tr)) then return false end
+
+  self:SetStage(0)
+  return constraint.RemoveConstraints(tr.Entity, "Pulley")
 end
 
-function TOOL.BuildCPanel( CPanel )
+function TOOL:Holster(tr)
+  self:ClearObjects()
+end
 
-  CPanel:AddControl( "Header", { Text = "#tool.pulley.name", Description  = "#tool.pulley.help" }  )
-  
-  CPanel:AddControl( "ComboBox", { 
+-- Enter `spawnmenu_reload` in the console to reload the panel
+function TOOL.BuildCPanel(CPanel) local pItem
+  CPanel:ClearControls(); CPanel:DockPadding(5, 0, 5, 10)
 
-      Label = "#tool.presets",
-      MenuButton = 1,
-      Folder = "pulley",
-      Options =  { Default = {  pulley_forcelimit = '0',    pulley_width='2',    pulley_rigid='0',    pulley_material='cable/cable' } },
-      CVars =    {        "pulley_forcelimit",      "pulley_width",      "pulley_rigid",      "pulley_material" } 
-                  })
+  pItem = CPanel:SetName(language.GetPhrase("tool."..gsTool..".name"))
+  pItem = CPanel:Help   (language.GetPhrase("tool."..gsTool..".desc"))
 
-  CPanel:AddControl( "Slider",     { Label = "#tool.forcelimit",    Type = "Float",   Command = "pulley_forcelimit",   Min = "0",   Max = "1000", Help=true }  )
-  CPanel:AddControl( "CheckBox",    { Label = "#tool.pulley.rigid",    Command = "pulley_rigid", Help=true }  )
+  pItem = vgui.Create("ControlPresets", CPanel)
+  pItem:SetPreset(gsTool)
+  pItem:AddOption("Default", gtConvar)
+  for key, val in pairs(table.GetKeys(gtConvar)) do
+    pItem:AddConVar(val) end
+  CPanel:AddItem(pItem)
 
-  CPanel:AddControl( "Slider",     { Label = "#tool.pulley.width",    Type = "Float",   Command = "pulley_width",     Min = "0",   Max = "10" }  )
-  CPanel:AddControl( "RopeMaterial",   { Label = "#tool.pulley.material",    convar  = "pulley_material" }  )
-                  
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".forcelimit_con"), gsTool.."_forcelimit", 0, 50000, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".forcelimit"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_forcelimit"])
+  pItem = CPanel:NumSlider(language.GetPhrase("tool."..gsTool..".width_con"), gsTool.."_width", 0, 10, 3)
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".width"))
+          pItem:SetDefaultValue(gtConvar[gsTool.."_width"])
+  pItem = CPanel:CheckBox (language.GetPhrase("tool."..gsTool..".rigid_con"), gsTool.."_rigid")
+          pItem:SetTooltip(language.GetPhrase("tool."..gsTool..".rigid"))
+  pItem = vgui.Create("RopeMaterial", CPanel)
+          pItem:SetConVar(gsTool.."_material")
+          CPanel:AddPanel(pItem)
 end

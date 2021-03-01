@@ -15,7 +15,7 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".desc", "Welds two things together using a nail")
   language.Add("tool."..gsTool..".left", "Nails two thing togrther")
   language.Add("tool."..gsTool..".right", "Nails multiple things togrther")
-  language.Add("tool."..gsTool..".reload", "Removes the nail constraint")
+  language.Add("tool."..gsTool..".reload", "Removes nail constraints from the trace entity")
   language.Add("tool."..gsTool..".0", "Click on a thin prop or a ragdoll that has something close behind it")
   language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")

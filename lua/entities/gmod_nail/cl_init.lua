@@ -1,15 +1,13 @@
+ENT.Spawnable      = false
+ENT.AdminSpawnable = false
 
-ENT.Spawnable			= false
-ENT.AdminSpawnable		= false
+--[[---------------------------------------------------------
+  Name: Draw
+  Desc: Draw it!
+---------------------------------------------------------]]
 
-/*---------------------------------------------------------
-   Name: Draw
-   Desc: Draw it!
----------------------------------------------------------*/
 function ENT:Draw()
-
-	self:DrawModel()
-	
+  self:DrawModel()
 end
 
-include('shared.lua')
+include("shared.lua")

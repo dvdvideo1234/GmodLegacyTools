@@ -33,7 +33,7 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".info.1", "Select second prop")
   language.Add("tool."..gsTool..".left", "Create axis center between two props")
   language.Add("tool."..gsTool..".right", "Pike props behind with multiple axis")
-  language.Add("tool."..gsTool..".reload", "Removes axis constraints from trace entity")
+  language.Add("tool."..gsTool..".reload", "Removes axis constraints from the trace entity")
   language.Add("tool."..gsTool..".forcelimit_con", "Force limit:")
   language.Add("tool."..gsTool..".forcelimit", "The amount of force it takes for the constraint to break. Set 0 to never break")
   language.Add("tool."..gsTool..".torquelimit_con", "Torque limit:")

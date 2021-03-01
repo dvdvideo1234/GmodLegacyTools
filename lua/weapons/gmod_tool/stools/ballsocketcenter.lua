@@ -40,7 +40,7 @@ if(CLIENT) then
   language.Add("tool."..gsTool..".info.1", "Select second prop")
   language.Add("tool."..gsTool..".left", "Create ball socket between two props")
   language.Add("tool."..gsTool..".right", "Create three ball sockets for shaft support")
-  language.Add("tool."..gsTool..".reload", "Removes axis constraints from trace entity")
+  language.Add("tool."..gsTool..".reload", "Removes axis constraints from the trace entity")
   language.Add("tool."..gsTool..".torquelimit_con", "Torque Limit:")
   language.Add("tool."..gsTool..".torquelimit", "The amount of torque it takes for the constraint to break. Set 0 to never break")
   language.Add("tool."..gsTool..".forcelimit_con", "Force Limit:")
