@@ -135,7 +135,6 @@ function TOOL:Constraint(tTr, bOne)
   trData.endpos:Add(trData.start)
   trData.filter = {user, tTr.Entity, Size = 2}
   trData.mask   = MASK_SOLID
-  trData.ignoreworld = false
   trData.collisiongroup = COLLISION_GROUP_NONE
   trData.output = trNail
 
@@ -149,12 +148,12 @@ function TOOL:Constraint(tTr, bOne)
       if(not trNail) then break end
       if(not trNail.Hit) then break end
 
+      if(trNail.HitWorld) then trNail.Entity = game.GetWorld() end
+
       if(trNail.Entity and
          trNail.Entity ~= tTr.Entity and not trNail.Entity:IsPlayer() and
          util.IsValidPhysicsObject(trNail.Entity, trNail.PhysicsBone)) then
-
         -- Add the entity to the filter
-        if(trNail.HitWorld) then trData.ignoreworld = true end
         trData.filter.Size = trData.filter.Size + 1
         trData.filter[trData.filter.Size] = trNail.Entity
 
