@@ -107,12 +107,12 @@ duplicator.RegisterConstraint("Nail", MakeNail, "Ent1", "Ent2", "Bone1", "Bone2"
 
 cleanup.Register(gsTool.."s")
 
-function TOOL:Validate(tr)
-  if(not tr) then return false end
-  if(not tr.Entity) then return false end
-  if(not tr.Entity:IsValid()) then return false end
-  if(tr.Entity:IsPlayer()) then return false end
-  if(not util.IsValidPhysicsObject(tr.Entity, tr.PhysicsBone)) then return false end
+function TOOL:Validate(tTr)
+  if(not tTr) then return false end
+  if(not tTr.Entity) then return false end
+  if(not tTr.Entity:IsValid()) then return false end
+  if(tTr.Entity:IsPlayer()) then return false end
+  if(not util.IsValidPhysicsObject(tTr.Entity, tTr.PhysicsBone)) then return false end
   return true
 end
 
@@ -143,12 +143,12 @@ function TOOL:Constraint(tTr, bOne)
   if(trNail and trNail.Hit and pikelength > 0 and pikeiters > 0) then
     undo.Create("Nail")
 
+    if(trNail.HitWorld) then trNail.Entity = game.GetWorld() end
+
     while(trNail and trNail.Hit and pikelength > 0 and pikeiters > 0) do
 
       if(not trNail) then break end
       if(not trNail.Hit) then break end
-
-      if(trNail.HitWorld) then trNail.Entity = game.GetWorld() end
 
       if(trNail.Entity and
          trNail.Entity ~= tTr.Entity and not trNail.Entity:IsPlayer() and
@@ -164,13 +164,16 @@ function TOOL:Constraint(tTr, bOne)
                                       tTr.PhysicsBone, trNail.PhysicsBone,
                                       vOrg, vDir, forcelimit, nocollide, remonbreak)
 
-        if(cWeld and cWeld:IsValid()) then
-          undo.AddEntity(cWeld)
+        if(eNail and eNail:IsValid()) then
+          eNail:SetCreator(user)
           undo.AddEntity(eNail)
-          undo.SetPlayer(user)
-
-          user:AddCleanup(gsTool.."s", cWeld)
           user:AddCleanup(gsTool.."s", eNail)
+          if(cWeld and cWeld:IsValid()) then
+            cWeld:SetCreator(user)
+            undo.AddEntity(cWeld)
+            user:AddCleanup(gsTool.."s", cWeld)
+          end
+          undo.SetPlayer(user)
         end
 
         if(pikecount > 0) then
