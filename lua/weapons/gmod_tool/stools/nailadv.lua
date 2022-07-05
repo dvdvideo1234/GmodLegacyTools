@@ -95,6 +95,7 @@ local function MakeNail(Ent1, Ent2, Bone1, Bone2, Pos, Ang, ForLi, NoCo, ReEn)
   eNail:Activate()
 
   cWeld:DeleteOnRemove(eNail)
+  eNail:DeleteOnRemove(cWeld)
   Ent1:DeleteOnRemove(eNail)
   Ent1:DeleteOnRemove(cWeld)
   Ent2:DeleteOnRemove(eNail)
