@@ -46,7 +46,7 @@ TOOL.ConfigName = nil
 
 function TOOL:NotifyUser(sMsg, sNot, iSiz)
   local user = self:GetOwner()
-  local fmsg = "GAMEMODE:AddNotify('%s', NOTIFY_%s, %d);"
+  local fmsg = "notification.AddLegacy('%s', NOTIFY_%s, %d);"
   user:SendLua(fmsg:format(sMsg, sNot, iSiz))
 end
 

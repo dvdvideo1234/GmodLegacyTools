@@ -15,11 +15,11 @@ local function playerNotify(var, val, set, ply)
 	local msg = "["..tostring(var).."] = <"..tostring(val)..">{"..tostring(set).."}"
 	if(SERVER) then
 		if(ply and ply:IsValid()) then
-			ply:SendLua("GAMEMODE:AddNotify(\"Server: "..msg.."\", NOTIFY_GENERIC, 6)")
+			ply:SendLua("notification.AddLegacy(\"Server: "..msg.."\", NOTIFY_GENERIC, 6)")
 		  ply:SendLua("surface.PlaySound(\"ambient/water/drip\"..math.random(1, 4)..\".wav\")")
 		end
 	else
-		GAMEMODE:AddNotify("Client: "..msg, NOTIFY_GENERIC, 6)
+		notification.AddLegacy("Client: "..msg, NOTIFY_GENERIC, 6)
 		surface.PlaySound("ambient/water/drip"..math.random(1, 4)..".wav")
 	end
 end

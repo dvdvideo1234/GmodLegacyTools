@@ -24,7 +24,7 @@ end
 
 if (CLIENT) then
   usermessage.Hook("CloakingHurrah!", function()
-    GAMEMODE:AddNotify("Entity is now cloakable!", NOTIFY_GENERIC, 10);
+    notification.AddLegacy("Entity is now cloakable!", NOTIFY_GENERIC, 10);
     surface.PlaySound ("ambient/water/drip" .. math.random(1, 4) .. ".wav");
   end);
   language.Add("Tool.cloaking.name", "Cloaking");
